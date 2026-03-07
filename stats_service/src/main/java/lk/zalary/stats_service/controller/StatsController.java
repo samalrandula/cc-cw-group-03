@@ -1,5 +1,6 @@
 package lk.zalary.stats_service.controller;
 
+import lk.zalary.stats_service.dto.StatsResponse;
 import lk.zalary.stats_service.service.StatsService;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,13 +14,11 @@ public class StatsController {
         this.statsService = statsService;
     }
 
-    @GetMapping("/average/{role}")
-    public Double getAverageSalary(@PathVariable String role) {
-        return statsService.getAverageSalaryByRole(role);
-    }
-
-    @GetMapping("/count")
-    public Long getTotalApprovedSubmissions() {
-        return statsService.getTotalApprovedSubmissions();
+    @GetMapping
+    public StatsResponse getStats(
+            @RequestParam String role,
+            @RequestParam String country
+    ){
+        return statsService.getStats(role,country);
     }
 }
