@@ -7,6 +7,6 @@
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <!-- Include SQL files -->
-    <include file="db/changelog/changes/V1__create_salary_submission_table.sql"/>
+    <include file="db/changelog/changes/create_tables.sql"/>
 
 </databaseChangeLog>
