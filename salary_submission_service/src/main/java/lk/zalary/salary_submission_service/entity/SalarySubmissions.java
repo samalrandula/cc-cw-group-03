@@ -11,13 +11,14 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "salary")
+@Table(name = "salary_submissions")
 @NoArgsConstructor
 @AllArgsConstructor
-public class Salary {
+public class SalarySubmissions {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "salary_submission_id")
     private Integer id;
 
     @Column(nullable = false)

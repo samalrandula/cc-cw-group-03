@@ -1,7 +1,7 @@
 package lk.zalary.salary_submission_service.service.impl;
 
 import lk.zalary.salary_submission_service.dto.SalarySubmissionRequest;
-import lk.zalary.salary_submission_service.entity.Salary;
+import lk.zalary.salary_submission_service.entity.SalarySubmissions;
 import lk.zalary.salary_submission_service.repository.SalaryRepository;
 import lk.zalary.salary_submission_service.service.SalaryService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class SalaryServiceImpl implements SalaryService {
                 .setScale(-3, RoundingMode.HALF_UP);
 
         // Create SalarySubmission object
-        Salary submission = new Salary();
+        SalarySubmissions submission = new SalarySubmissions();
         submission.setCountry(country);
         submission.setCompany(company);
         submission.setRole(role);
@@ -46,7 +46,7 @@ public class SalaryServiceImpl implements SalaryService {
         submission.setAnonymize(request.getAnonymize());
         submission.setSubmittedAt(LocalDateTime.now());
 
-        Salary savedSubmission = salaryRepository.save(submission);
+        SalarySubmissions savedSubmission = salaryRepository.save(submission);
 
         // Log submission for testing
         log.info("Salary Submission received: {}", submission);
