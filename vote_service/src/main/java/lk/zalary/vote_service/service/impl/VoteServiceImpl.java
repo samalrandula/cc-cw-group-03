@@ -6,6 +6,7 @@ import lk.zalary.vote_service.dto.VoteResponse;
 import lk.zalary.vote_service.entity.Vote;
 import lk.zalary.vote_service.repository.VoteRepository;
 import lk.zalary.vote_service.service.VoteService;
+import lk.zalary.vote_service.util.VoteType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,10 +33,6 @@ public class VoteServiceImpl implements VoteService {
     @Override
     @Transactional
     public VoteResponse submitVote(VoteRequest request) {
-        
-        if (!request.getVoteType().equals("upvote") && !request.getVoteType().equals("downvote")) {
-            throw new IllegalArgumentException("Vote type must be 'upvote' or 'downvote'");
-        }
         
         Optional<Vote> existingVote = voteRepository.findByUserIdAndSubmissionId(
             request.getUserId(), 

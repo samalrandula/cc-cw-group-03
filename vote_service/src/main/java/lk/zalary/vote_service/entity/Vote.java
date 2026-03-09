@@ -1,6 +1,8 @@
 package lk.zalary.vote_service.entity;
 
 import jakarta.persistence.*;
+import lk.zalary.vote_service.converter.VoteTypeConverter;
+import lk.zalary.vote_service.util.VoteType;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,8 +25,9 @@ public class Vote {
     @Column(name = "submission_id", nullable = false)
     private Integer submissionId;
     
+    @Convert(converter = VoteTypeConverter.class)
     @Column(name = "vote_type", nullable = false)
-    private String voteType;
+    private VoteType voteType;
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

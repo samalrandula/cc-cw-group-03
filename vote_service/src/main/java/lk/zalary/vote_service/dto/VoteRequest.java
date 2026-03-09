@@ -1,5 +1,6 @@
 package lk.zalary.vote_service.dto;
 
+import lk.zalary.vote_service.util.VoteType;
 import lombok.Data;
 import java.util.UUID;
 
@@ -7,5 +8,5 @@ import java.util.UUID;
 public class VoteRequest {
     private UUID userId;
     private Integer submissionId;
-    private String voteType;
+    private VoteType voteType;
 }
