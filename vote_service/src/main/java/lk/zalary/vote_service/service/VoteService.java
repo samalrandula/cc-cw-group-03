@@ -7,5 +7,4 @@ import lk.zalary.vote_service.dto.VoteResponse;
 public interface VoteService {
     VoteResponse submitVote(VoteRequest request);
     VoteCountResponse getVoteCount(Integer salarySubmissionId);
-    VoteResponse removeVote(Integer userId, Integer salarySubmissionId);
 }

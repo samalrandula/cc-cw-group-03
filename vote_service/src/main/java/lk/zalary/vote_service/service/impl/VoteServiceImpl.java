@@ -37,24 +37,43 @@ public class VoteServiceImpl implements VoteService {
     @Transactional
     public VoteResponse submitVote(VoteRequest request) {
         
+        if (request.getVoteType() == null) {
+            throw new IllegalArgumentException("Vote type is required");
+        }
+        
         Optional<Vote> existingVote = voteRepository.findByUserIdAndSalarySubmissionId(
             request.getUserId(), 
             request.getSalarySubmissionId()
         );
         
+        String message;
+        
         if (existingVote.isPresent()) {
-            throw new IllegalStateException("User has already voted on this submission");
+            Vote vote = existingVote.get();
+            if (vote.getVoteType() == request.getVoteType()) {
+                voteRepository.delete(vote);
+                message = "Vote removed successfully";
+                log.info("Vote toggled off: {} removed by user {} on submission {}", 
+                    request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
+            } else {
+                vote.setVoteType(request.getVoteType());
+                vote.setCreatedAt(LocalDateTime.now());
+                voteRepository.save(vote);
+                message = "Vote changed successfully";
+                log.info("Vote changed: to {} by user {} on submission {}", 
+                    request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
+            }
+        } else {
+            Vote vote = new Vote();
+            vote.setUserId(request.getUserId());
+            vote.setSalarySubmissionId(request.getSalarySubmissionId());
+            vote.setVoteType(request.getVoteType());
+            vote.setCreatedAt(LocalDateTime.now());
+            voteRepository.save(vote);
+            message = "Vote recorded successfully";
+            log.info("Vote recorded: {} by user {} on submission {}", 
+                request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
         }
-        
-        Vote vote = new Vote();
-        vote.setUserId(request.getUserId());
-        vote.setSalarySubmissionId(request.getSalarySubmissionId());
-        vote.setVoteType(request.getVoteType());
-        vote.setCreatedAt(LocalDateTime.now());
-        
-        voteRepository.save(vote);
-        log.info("Vote recorded: {} by user {} on submission {}", 
-            request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
         
         Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.UPVOTE);
         Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.DOWNVOTE);
@@ -62,7 +81,7 @@ public class VoteServiceImpl implements VoteService {
         String status = determineAndUpdateStatus(request.getSalarySubmissionId(), upvoteCount, downvoteCount);
         
         return new VoteResponse(
-            "Vote recorded successfully",
+            message,
             upvoteCount,
             downvoteCount,
             status
@@ -78,28 +97,6 @@ public class VoteServiceImpl implements VoteService {
             "Vote count retrieved",
             upvoteCount,
             downvoteCount
-        );
-    }
-    
-    @Override
-    @Transactional
-    public VoteResponse removeVote(Integer userId, Integer salarySubmissionId) {
-        Vote vote = voteRepository.findByUserIdAndSalarySubmissionId(userId, salarySubmissionId)
-                .orElseThrow(() -> new IllegalStateException("No vote found for this user on this submission"));
-        
-        voteRepository.delete(vote);
-        log.info("Vote removed: by user {} on submission {}", userId, salarySubmissionId);
-        
-        Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.UPVOTE);
-        Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.DOWNVOTE);
-        
-        String status = determineAndUpdateStatus(salarySubmissionId, upvoteCount, downvoteCount);
-        
-        return new VoteResponse(
-            "Vote removed successfully",
-            upvoteCount,
-            downvoteCount,
-            status
         );
     }
     
