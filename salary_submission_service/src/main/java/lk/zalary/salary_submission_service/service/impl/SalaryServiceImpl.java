@@ -67,6 +67,7 @@ public class SalaryServiceImpl implements SalaryService {
 
     @Override
     public SalarySubmissions getById(Integer salarySubmissionId) {
+        log.info("Retrieving salary submission with id: {}", salarySubmissionId);
         return salaryRepository.findById(salarySubmissionId.longValue())
                 .orElseThrow(() -> new IllegalArgumentException("Salary submission not found with id: " + salarySubmissionId));
     }

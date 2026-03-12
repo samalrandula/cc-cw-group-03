@@ -59,16 +59,7 @@ public class VoteServiceImpl implements VoteService {
         Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.UPVOTE);
         Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.DOWNVOTE);
         
-        String status = "PENDING";
-        if (upvoteCount >= approvalThreshold) {
-            updateSubmissionStatus(request.getSalarySubmissionId(), "APPROVED");
-            status = "APPROVED";
-            log.info("Submission {} reached approval threshold and is now APPROVED", request.getSalarySubmissionId());
-        } else if (downvoteCount >= rejectionThreshold) {
-            updateSubmissionStatus(request.getSalarySubmissionId(), "REJECTED");
-            status = "REJECTED";
-            log.info("Submission {} reached rejection threshold and is now REJECTED", request.getSalarySubmissionId());
-        }
+        String status = determineAndUpdateStatus(request.getSalarySubmissionId(), upvoteCount, downvoteCount);
         
         return new VoteResponse(
             "Vote recorded successfully",
@@ -88,6 +79,48 @@ public class VoteServiceImpl implements VoteService {
             upvoteCount,
             downvoteCount
         );
+    }
+    
+    @Override
+    @Transactional
+    public VoteResponse removeVote(Integer userId, Integer salarySubmissionId) {
+        Vote vote = voteRepository.findByUserIdAndSalarySubmissionId(userId, salarySubmissionId)
+                .orElseThrow(() -> new IllegalStateException("No vote found for this user on this submission"));
+        
+        voteRepository.delete(vote);
+        log.info("Vote removed: by user {} on submission {}", userId, salarySubmissionId);
+        
+        Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.UPVOTE);
+        Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.DOWNVOTE);
+        
+        String status = determineAndUpdateStatus(salarySubmissionId, upvoteCount, downvoteCount);
+        
+        return new VoteResponse(
+            "Vote removed successfully",
+            upvoteCount,
+            downvoteCount,
+            status
+        );
+    }
+    
+    private String determineAndUpdateStatus(Integer salarySubmissionId, Long upvoteCount, Long downvoteCount) {
+        String status = "PENDING";
+        
+        if (upvoteCount >= approvalThreshold) {
+            updateSubmissionStatus(salarySubmissionId, "APPROVED");
+            status = "APPROVED";
+            log.info("Submission {} has approval threshold and is APPROVED", salarySubmissionId);
+        } else if (downvoteCount >= rejectionThreshold) {
+            updateSubmissionStatus(salarySubmissionId, "REJECTED");
+            status = "REJECTED";
+            log.info("Submission {} has rejection threshold and is REJECTED", salarySubmissionId);
+        } else {
+            updateSubmissionStatus(salarySubmissionId, "PENDING");
+            status = "PENDING";
+            log.info("Submission {} is back to PENDING status", salarySubmissionId);
+        }
+        
+        return status;
     }
     
     private void updateSubmissionStatus(Integer salarySubmissionId, String status) {

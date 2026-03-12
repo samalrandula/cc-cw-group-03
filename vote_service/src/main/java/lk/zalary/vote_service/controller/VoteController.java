@@ -32,4 +32,19 @@ public class VoteController {
         VoteCountResponse response = voteService.getVoteCount(salarySubmissionId);
         return ResponseEntity.ok(response);
     }
+    
+    @DeleteMapping
+    public ResponseEntity<VoteResponse> removeVote(
+            @RequestParam Integer userId,
+            @RequestParam Integer salarySubmissionId
+    ) {
+        try {
+            VoteResponse response = voteService.removeVote(userId, salarySubmissionId);
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(
+                new VoteResponse(e.getMessage(), 0L, 0L, "ERROR")
+            );
+        }
+    }
 }
