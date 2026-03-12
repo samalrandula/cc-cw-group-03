@@ -53,8 +53,8 @@ public class VoteServiceImpl implements VoteService {
         log.info("Vote recorded: {} by user {} on submission {}", 
             request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
         
-        Long upvoteCount = voteRepository.countUpvotesBySalarySubmissionId(request.getSalarySubmissionId());
-        Long downvoteCount = voteRepository.countDownvotesBySalarySubmissionId(request.getSalarySubmissionId());
+        Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.UPVOTE);
+        Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.DOWNVOTE);
         
         String status = "PENDING";
         if (upvoteCount >= approvalThreshold) {
@@ -73,8 +73,8 @@ public class VoteServiceImpl implements VoteService {
     
     @Override
     public VoteCountResponse getVoteCount(Integer salarySubmissionId) {
-        Long upvoteCount = voteRepository.countUpvotesBySalarySubmissionId(salarySubmissionId);
-        Long downvoteCount = voteRepository.countDownvotesBySalarySubmissionId(salarySubmissionId);
+        Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.UPVOTE);
+        Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.DOWNVOTE);
         
         return new VoteCountResponse(
             "Vote count retrieved",

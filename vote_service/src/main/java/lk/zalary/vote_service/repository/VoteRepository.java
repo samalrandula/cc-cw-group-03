@@ -12,9 +12,5 @@ public interface VoteRepository extends JpaRepository<Vote, Integer> {
     
     Optional<Vote> findByUserIdAndSalarySubmissionId(Integer userId, Integer salarySubmissionId);
     
-    @Query("SELECT COUNT(v) FROM Vote v WHERE v.salarySubmissionId = :salarySubmissionId AND v.voteType = lk.zalary.vote_service.util.VoteType.UPVOTE")
-    Long countUpvotesBySalarySubmissionId(Integer salarySubmissionId);
-    
-    @Query("SELECT COUNT(v) FROM Vote v WHERE v.salarySubmissionId = :salarySubmissionId AND v.voteType = lk.zalary.vote_service.util.VoteType.DOWNVOTE")
-    Long countDownvotesBySalarySubmissionId(Integer salarySubmissionId);
+    Long countBySalarySubmissionIdAndVoteType(Integer salarySubmissionId, VoteType voteType);
 }

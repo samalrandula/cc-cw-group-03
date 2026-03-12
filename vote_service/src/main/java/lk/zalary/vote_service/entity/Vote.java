@@ -8,7 +8,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "votes")
+@Table(name = "votes", schema = "zalary")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,7 +25,6 @@ public class Vote {
     @Column(name = "salary_submission_id", nullable = false)
     private Integer salarySubmissionId;
     
-    @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "vote_type", nullable = false, columnDefinition = "vote_type")
     private VoteType voteType;
