@@ -27,9 +27,9 @@ public class VoteController {
         }
     }
     
-    @GetMapping("/submission/{submissionId}")
-    public ResponseEntity<VoteCountResponse> getVoteCount(@PathVariable Integer submissionId) {
-        VoteCountResponse response = voteService.getVoteCount(submissionId);
+    @GetMapping("/submission/{salarySubmissionId}")
+    public ResponseEntity<VoteCountResponse> getVoteCount(@PathVariable Integer salarySubmissionId) {
+        VoteCountResponse response = voteService.getVoteCount(salarySubmissionId);
         return ResponseEntity.ok(response);
     }
 }

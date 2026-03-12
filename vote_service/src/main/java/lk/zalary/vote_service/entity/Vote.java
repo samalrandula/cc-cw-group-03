@@ -1,32 +1,33 @@
 package lk.zalary.vote_service.entity;
 
 import jakarta.persistence.*;
-import lk.zalary.vote_service.converter.VoteTypeConverter;
 import lk.zalary.vote_service.util.VoteType;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
-@Table(name = "votes", schema = "zalary")
+@Table(name = "votes")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Vote {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "vote_id")
-    private UUID voteId;
+    private Integer voteId;
     
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private Integer userId;
     
-    @Column(name = "submission_id", nullable = false)
-    private Integer submissionId;
+    @Column(name = "salary_submission_id", nullable = false)
+    private Integer salarySubmissionId;
     
-    @Convert(converter = VoteTypeConverter.class)
-    @Column(name = "vote_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "vote_type", nullable = false, columnDefinition = "vote_type")
     private VoteType voteType;
     
     @Column(name = "created_at", nullable = false)

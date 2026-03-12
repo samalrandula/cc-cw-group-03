@@ -34,9 +34,9 @@ public class VoteServiceImpl implements VoteService {
     @Transactional
     public VoteResponse submitVote(VoteRequest request) {
         
-        Optional<Vote> existingVote = voteRepository.findByUserIdAndSubmissionId(
+        Optional<Vote> existingVote = voteRepository.findByUserIdAndSalarySubmissionId(
             request.getUserId(), 
-            request.getSubmissionId()
+            request.getSalarySubmissionId()
         );
         
         if (existingVote.isPresent()) {
@@ -45,22 +45,22 @@ public class VoteServiceImpl implements VoteService {
         
         Vote vote = new Vote();
         vote.setUserId(request.getUserId());
-        vote.setSubmissionId(request.getSubmissionId());
+        vote.setSalarySubmissionId(request.getSalarySubmissionId());
         vote.setVoteType(request.getVoteType());
         vote.setCreatedAt(LocalDateTime.now());
         
         voteRepository.save(vote);
         log.info("Vote recorded: {} by user {} on submission {}", 
-            request.getVoteType(), request.getUserId(), request.getSubmissionId());
+            request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
         
-        Long upvoteCount = voteRepository.countUpvotesBySubmissionId(request.getSubmissionId());
-        Long downvoteCount = voteRepository.countDownvotesBySubmissionId(request.getSubmissionId());
+        Long upvoteCount = voteRepository.countUpvotesBySalarySubmissionId(request.getSalarySubmissionId());
+        Long downvoteCount = voteRepository.countDownvotesBySalarySubmissionId(request.getSalarySubmissionId());
         
         String status = "PENDING";
         if (upvoteCount >= approvalThreshold) {
-            updateSubmissionStatus(request.getSubmissionId(), "APPROVED");
+            updateSubmissionStatus(request.getSalarySubmissionId(), "APPROVED");
             status = "APPROVED";
-            log.info("Submission {} reached approval threshold and is now APPROVED", request.getSubmissionId());
+            log.info("Submission {} reached approval threshold and is now APPROVED", request.getSalarySubmissionId());
         }
         
         return new VoteResponse(
@@ -72,9 +72,9 @@ public class VoteServiceImpl implements VoteService {
     }
     
     @Override
-    public VoteCountResponse getVoteCount(Integer submissionId) {
-        Long upvoteCount = voteRepository.countUpvotesBySubmissionId(submissionId);
-        Long downvoteCount = voteRepository.countDownvotesBySubmissionId(submissionId);
+    public VoteCountResponse getVoteCount(Integer salarySubmissionId) {
+        Long upvoteCount = voteRepository.countUpvotesBySalarySubmissionId(salarySubmissionId);
+        Long downvoteCount = voteRepository.countDownvotesBySalarySubmissionId(salarySubmissionId);
         
         return new VoteCountResponse(
             "Vote count retrieved",
@@ -83,11 +83,11 @@ public class VoteServiceImpl implements VoteService {
         );
     }
     
-    private void updateSubmissionStatus(Integer submissionId, String status) {
+    private void updateSubmissionStatus(Integer salarySubmissionId, String status) {
         try {
-            String url = salarySubmissionServiceUrl + "/api/submissions/" + submissionId + "/status?status=" + status;
+            String url = salarySubmissionServiceUrl + "/api/submissions/" + salarySubmissionId + "/status?status=" + status;
             restTemplate.put(url, null);
-            log.info("Updated submission {} to status {}", submissionId, status);
+            log.info("Updated submission {} to status {}", salarySubmissionId, status);
         } catch (Exception e) {
             log.error("Failed to update submission status", e);
         }

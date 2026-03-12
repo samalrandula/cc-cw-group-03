@@ -6,16 +6,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface VoteRepository extends JpaRepository<Vote, UUID> {
+public interface VoteRepository extends JpaRepository<Vote, Integer> {
     
-    Optional<Vote> findByUserIdAndSubmissionId(UUID userId, Integer submissionId);
+    Optional<Vote> findByUserIdAndSalarySubmissionId(Integer userId, Integer salarySubmissionId);
     
-    @Query("SELECT COUNT(v) FROM Vote v WHERE v.submissionId = :submissionId AND v.voteType = lk.zalary.vote_service.util.VoteType.UPVOTE")
-    Long countUpvotesBySubmissionId(Integer submissionId);
+    @Query("SELECT COUNT(v) FROM Vote v WHERE v.salarySubmissionId = :salarySubmissionId AND v.voteType = lk.zalary.vote_service.util.VoteType.UPVOTE")
+    Long countUpvotesBySalarySubmissionId(Integer salarySubmissionId);
     
-    @Query("SELECT COUNT(v) FROM Vote v WHERE v.submissionId = :submissionId AND v.voteType = lk.zalary.vote_service.util.VoteType.DOWNVOTE")
-    Long countDownvotesBySubmissionId(Integer submissionId);
+    @Query("SELECT COUNT(v) FROM Vote v WHERE v.salarySubmissionId = :salarySubmissionId AND v.voteType = lk.zalary.vote_service.util.VoteType.DOWNVOTE")
+    Long countDownvotesBySalarySubmissionId(Integer salarySubmissionId);
 }
