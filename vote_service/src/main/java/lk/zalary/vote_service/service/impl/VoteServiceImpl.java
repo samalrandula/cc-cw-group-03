@@ -27,6 +27,9 @@ public class VoteServiceImpl implements VoteService {
     @Value("${vote.approval.threshold:5}")
     private Integer approvalThreshold;
     
+    @Value("${vote.rejection.threshold:3}")
+    private Integer rejectionThreshold;
+    
     @Value("${salary.submission.service.url:http://localhost:8081}")
     private String salarySubmissionServiceUrl;
     
@@ -61,6 +64,10 @@ public class VoteServiceImpl implements VoteService {
             updateSubmissionStatus(request.getSalarySubmissionId(), "APPROVED");
             status = "APPROVED";
             log.info("Submission {} reached approval threshold and is now APPROVED", request.getSalarySubmissionId());
+        } else if (downvoteCount >= rejectionThreshold) {
+            updateSubmissionStatus(request.getSalarySubmissionId(), "REJECTED");
+            status = "REJECTED";
+            log.info("Submission {} reached rejection threshold and is now REJECTED", request.getSalarySubmissionId());
         }
         
         return new VoteResponse(
