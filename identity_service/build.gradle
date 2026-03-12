@@ -10,8 +10,7 @@ description = 'Demo project for Spring Boot'
 
 java {
 	toolchain {
-		// Use Java 17, which you have installed locally
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
