@@ -22,4 +22,12 @@ public interface ForwardingService {
             Map<String, String> queryParams,
             Class<R> responseType
     );
+
+    // NEW METHOD
+    <R> ResponseEntity<Object> forwardWithBody(
+            ServiceNames serviceNames,
+            String path,
+            Map<String, Object> requestBody,
+            Class<R> responseType
+    );
 }
