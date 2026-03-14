@@ -1,5 +1,6 @@
 package lk.zalary.vote_service.service;
 
+import lk.zalary.vote_service.dto.TokenValidationResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,8 +10,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -31,19 +30,18 @@ public class AuthService {
             
             HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
             
-            ResponseEntity<Map> response = restTemplate.exchange(
+            ResponseEntity<TokenValidationResponse> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
                 requestEntity,
-                Map.class
+                TokenValidationResponse.class
             );
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Map<String, Object> body = response.getBody();
-                Boolean isValid = (Boolean) body.get("valid");
+                TokenValidationResponse body = response.getBody();
                 
-                if (Boolean.TRUE.equals(isValid)) {
-                    return (Integer) body.get("userId");
+                if (body.isValid()) {
+                    return body.getUserId();
                 }
             }
             

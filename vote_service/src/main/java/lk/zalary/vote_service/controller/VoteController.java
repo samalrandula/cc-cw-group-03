@@ -42,10 +42,6 @@ public class VoteController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 new VoteResponse("Unauthorized: Invalid or expired token", 0L, 0L, "ERROR")
             );
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(
-                new VoteResponse(e.getMessage(), 0L, 0L, "ERROR")
-            );
         }
     }
     
