@@ -1,5 +1,6 @@
 package lk.zalary.vote_service.controller;
 
+import jakarta.validation.Valid;
 import lk.zalary.vote_service.dto.VoteCountResponse;
 import lk.zalary.vote_service.dto.VoteRequest;
 import lk.zalary.vote_service.dto.VoteResponse;
@@ -22,7 +23,7 @@ public class VoteController {
     @PutMapping
     public ResponseEntity<VoteResponse> manageVote(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader,
-            @RequestBody VoteRequest request) {
+            @Valid @RequestBody VoteRequest request) {
         try {
             if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
