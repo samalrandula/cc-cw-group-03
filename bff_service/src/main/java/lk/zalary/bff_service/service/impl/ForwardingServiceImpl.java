@@ -117,6 +117,44 @@ public class ForwardingServiceImpl implements ForwardingService {
     }
 
     /**
+     * Forward request with JSON body (convenience method for POST)
+     */
+    @Override
+    public <R> ResponseEntity<Object> forwardWithBody(
+            ServiceNames serviceNames,
+            String path,
+            Map<String, Object> requestBody,
+            Class<R> responseType
+    ) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<R> response = restTemplate.exchange(
+                    getUrl(serviceNames) + path,
+                    HttpMethod.POST,
+                    entity,
+                    responseType
+            );
+
+            return ResponseEntity
+                    .status(response.getStatusCode())
+                    .body(response.getBody());
+
+        } catch (HttpClientErrorException ex) {
+            return ResponseEntity
+                    .status(ex.getStatusCode())
+                    .body(ex.getResponseBodyAsString());
+        } catch (Exception ex) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Service unavailable", "message", ex.getMessage()));
+        }
+    }
+
+    /**
      * Get service URL based on service name
      */
     private String getUrl(ServiceNames serviceNames) {

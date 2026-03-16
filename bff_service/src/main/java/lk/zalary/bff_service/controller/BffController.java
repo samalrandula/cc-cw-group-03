@@ -10,11 +10,12 @@ import org.springframework.http.*;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping
 @RequiredArgsConstructor
 public class BffController {
 
@@ -179,36 +180,35 @@ public class BffController {
      * Search Salaries - Forward to Search Service
      */
     @GetMapping("/search")
-    public ResponseEntity<?> searchSalaries(
-            @RequestParam(required = false) String country,
-            @RequestParam(required = false) String company,
-            @RequestParam(required = false) String role,
-            @RequestParam(required = false) String experienceLevel
+    public ResponseEntity<Object> searchSalaries(
+            @RequestParam(required = false) List<String> countries,
+            @RequestParam(required = false) List<String> companies,
+            @RequestParam(required = false) List<String> roles,
+            @RequestParam(required = false) List<String> levels,
+            @RequestParam(required = false) BigDecimal minSalary,
+            @RequestParam(required = false) BigDecimal maxSalary,
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize
     ) {
-        // Build query parameters map
-        Map<String, String> queryParams = new HashMap<>();
-        if (country != null && !country.trim().isEmpty()) {
-            queryParams.put("country", country);
-        }
-        if (company != null && !company.trim().isEmpty()) {
-            queryParams.put("company", company);
-        }
-        if (role != null && !role.trim().isEmpty()) {
-            queryParams.put("role", role);
-        }
-        if (experienceLevel != null && !experienceLevel.trim().isEmpty()) {
-            queryParams.put("experienceLevel", experienceLevel);
-        }
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("countries", countries);
+        requestBody.put("companies", companies);
+        requestBody.put("roles", roles);
+        requestBody.put("experienceLevels", levels);
+        requestBody.put("salaryMin", minSalary);
+        requestBody.put("salaryMax", maxSalary);
+        requestBody.put("page", page);
+        requestBody.put("pageSize", pageSize);
 
-        // FORWARD TO SEARCH SERVICE with query params
-        return forwardingService.forwardWithParams(
+        return forwardingService.forwardWithBody(
                 ServiceNames.SEARCH_SERVICE,
-                "/api/search",
-                HttpMethod.GET,
-                queryParams,
+                "/api/v1/salaries/search",
+                requestBody,
                 Object.class
         );
     }
+
+
 
     @GetMapping("/stats")
     public ResponseEntity<?> getStats(
