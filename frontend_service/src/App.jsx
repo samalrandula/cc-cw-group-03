@@ -5,8 +5,8 @@ import { LoginModal, SignupModal } from "./components/AuthModals";
 import Lottie from "lottie-react";
 import animation from "./assets/Digital Finance Animation.json";
 import "./App.css";
-import { fetchStats } from "./api/statsApi";
-import { fetchCountries } from "./api/salaryApi";
+import { fetchStats } from "./api/StatsApi";
+import { fetchCountries } from "./api/SalaryApi";
 /* ─── Session helpers ── */
 const isAuthenticated = () => !!sessionStorage.getItem("zalary_token");
 const getSessionEmail = () => sessionStorage.getItem("zalary_email") || "";
@@ -208,7 +208,7 @@ function StatsSection() {
 
       {/* Stat cards */}
       {error ? (
-        <div style={{ fontSize: 13, color: "#f87171", padding: "12px 0" }}>Failed to load stats.</div>
+        <div style={{ fontSize: 13, color: "#f87171", padding: "12px 0" }}>Failed to load statistics.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, maxWidth: 800 }}>
           {(loading ? [{}, {}, {}] : statCards).map((s, i) => (
@@ -314,14 +314,14 @@ function App() {
               Compensation transparency
             </div>
             <h1 className="hero-title fade-up-2" style={{ marginBottom: 20 }}>
-              Know your worth.<br />Share yours.
+              Know your worth. Share yours.
             </h1>
             <p className="hero-sub fade-up-3">
               Zalary is the anonymous, community-driven salary platform helping tech professionals
               benchmark compensation with real, verified data.
             </p>
 
-            {!isLoggedIn && (
+{/*             {!isLoggedIn && (
               <div className="fade-up-4" style={{ display: "flex", gap: 12, marginTop: 32 }}>
                 <button className="btn-primary" onClick={openSignup}
                   style={{ padding: "12px 28px", fontSize: 15 }}>
@@ -332,7 +332,7 @@ function App() {
                   Browse data
                 </button>
               </div>
-            )}
+            )} */}
           </div>
 
           {/* ── Stats row ── */}

@@ -7,7 +7,7 @@ import jakarta.validation.constraints.*;
 public class VoteRequest {
 
     @NotNull(message = "Submission ID is required")
-    private Long submissionId;
+    private Long salarySubmissionId;
 
     @NotBlank(message = "Vote type is required")
     @Pattern(regexp = "^(UPVOTE|DOWNVOTE)$",

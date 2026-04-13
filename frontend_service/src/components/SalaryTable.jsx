@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@mui/material";
 import SalarySubmissionForm from "./SalarySubmissionForm";
-import { fetchSalaries, fetchCurrencies, fetchCountries } from "../api/salaryApi";
-import { submitVote } from "../api/voteApi";
-import { submitReport, REPORT_REASONS } from "../api/reportApi";
+import { fetchSalaries, fetchCurrencies, fetchCountries, fetchJobRoles } from "../api/SalaryApi";
+import { submitVote } from "../api/VoteApi";
+import { submitReport, REPORT_REASONS } from "../api/ReportApi";
 
 /* ── Inline styles ── */
 const S = {
@@ -220,7 +220,7 @@ const MultiSelectDropdown = ({ label, icon, options, selected, onChange, isLoadi
   );
 };
 
-/* ── Tag Input Filter ── */
+/* ── Tag Input Filter (generic, used for Company) ── */
 const TagInput = ({ label, icon, tags, onChange }) => {
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -228,105 +228,170 @@ const TagInput = ({ label, icon, tags, onChange }) => {
 
   const addTag = (value) => {
     const trimmed = value.trim();
-    if (trimmed && !tags.includes(trimmed)) {
-      onChange([...tags, trimmed]);
-    }
+    if (trimmed && !tags.includes(trimmed)) onChange([...tags, trimmed]);
     setInputValue("");
   };
 
-  const removeTag = (tag) => {
-    onChange(tags.filter((t) => t !== tag));
-  };
+  const removeTag = (tag) => onChange(tags.filter((t) => t !== tag));
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addTag(inputValue);
-    } else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) {
-      removeTag(tags[tags.length - 1]);
-    }
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(inputValue); }
+    else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) removeTag(tags[tags.length - 1]);
   };
 
   return (
-    <div
-      onClick={() => inputRef.current?.focus()}
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 10px",
-        borderRadius: 10,
-        border: "1px solid " + (focused ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.08)"),
-        background: focused ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.03)",
-        cursor: "text",
-        minWidth: 180,
-        maxWidth: 320,
-        transition: "all 0.15s",
-      }}
-    >
+    <div onClick={() => inputRef.current?.focus()} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 10, border: "1px solid " + (focused ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.08)"), background: focused ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.03)", cursor: "text", minWidth: 180, maxWidth: 320, transition: "all 0.15s" }}>
       <span style={{ fontSize: 14, userSelect: "none" }}>{icon}</span>
       {tags.length === 0 && inputValue === "" && (
-        <span style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", pointerEvents: "none", userSelect: "none" }}>
-          {label}…
-        </span>
+        <span style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", pointerEvents: "none", userSelect: "none" }}>{label}…</span>
       )}
       {tags.map((tag) => (
-        <span
-          key={tag}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "2px 8px",
-            borderRadius: 99,
-            background: "rgba(99,102,241,0.2)",
-            border: "1px solid rgba(99,102,241,0.35)",
-            color: "#a5b4fc",
-            fontSize: 12,
-            fontWeight: 600,
-            fontFamily: "'DM Sans', sans-serif",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <span key={tag} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 99, background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", color: "#a5b4fc", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>
           {tag}
-          <button
-            onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(165,180,252,0.6)",
-              cursor: "pointer",
-              padding: 0,
-              lineHeight: 1,
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >×</button>
+          <button onClick={(e) => { e.stopPropagation(); removeTag(tag); }} style={{ background: "none", border: "none", color: "rgba(165,180,252,0.6)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: 13, display: "flex", alignItems: "center" }}>×</button>
         </span>
       ))}
-      <input
-        ref={inputRef}
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={() => { setFocused(false); if (inputValue.trim()) addTag(inputValue); }}
-        style={{
-          background: "none",
-          border: "none",
-          outline: "none",
-          color: "#f1f5f9",
-          fontSize: 13,
-          fontFamily: "'DM Sans', sans-serif",
-          minWidth: 80,
-          flex: 1,
-          padding: "2px 0",
-        }}
-        placeholder={tags.length > 0 ? "+" : ""}
-      />
+      <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); if (inputValue.trim()) addTag(inputValue); }} style={{ background: "none", border: "none", outline: "none", color: "#f1f5f9", fontSize: 13, fontFamily: "'DM Sans', sans-serif", minWidth: 80, flex: 1, padding: "2px 0" }} placeholder={tags.length > 0 ? "+" : ""} />
+    </div>
+  );
+};
+
+/* ── Role Tag Autocomplete ───────────────────────────────────────────────────
+   Like TagInput but powered by fetchJobRoles:
+   - Type 3+ chars → debounced API call → dropdown with highlighted matches
+   - Click or Enter to add a role tag; free-text also accepted on Enter/comma
+   - Each added role becomes a removable tag, sent as comma-separated to the API
+──────────────────────────────────────────────────────────────────────────── */
+const RoleTagAutocomplete = ({ icon, tags, onChange }) => {
+  const [inputValue, setInputValue]   = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [open, setOpen]               = useState(false);
+  const [fetching, setFetching]       = useState(false);
+  const [focused, setFocused]         = useState(false);
+  const [activeIdx, setActiveIdx]     = useState(-1);
+  const wrapperRef                    = useRef(null);
+  const inputRef                      = useRef(null);
+  const debounceRef                   = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const addTag = (value) => {
+    const trimmed = value.trim();
+    if (trimmed && !tags.includes(trimmed)) onChange([...tags, trimmed]);
+    setInputValue("");
+    setSuggestions([]);
+    setOpen(false);
+    setActiveIdx(-1);
+  };
+
+  const removeTag = (tag) => onChange(tags.filter((t) => t !== tag));
+
+  const handleInput = (e) => {
+    const text = e.target.value;
+    setInputValue(text);
+    setActiveIdx(-1);
+    clearTimeout(debounceRef.current);
+
+    if (text.length < 3) { setSuggestions([]); setOpen(false); return; }
+
+    debounceRef.current = setTimeout(async () => {
+      setFetching(true);
+      try {
+        const results = await fetchJobRoles(text);
+        // Exclude roles already tagged
+        const filtered = results.filter((r) => !tags.includes(r));
+        setSuggestions(filtered);
+        setOpen(filtered.length > 0);
+      } catch { setSuggestions([]); setOpen(false); }
+      finally { setFetching(false); }
+    }, 300);
+  };
+
+  const handleKeyDown = (e) => {
+    if (open && suggestions.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); return; }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, -1)); return; }
+      if (e.key === "Enter" && activeIdx >= 0) { e.preventDefault(); addTag(suggestions[activeIdx]); return; }
+      if (e.key === "Escape") { setOpen(false); setActiveIdx(-1); return; }
+    }
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); if (inputValue.trim()) addTag(inputValue); }
+    else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) removeTag(tags[tags.length - 1]);
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: "relative" }}>
+      {/* Tag + input row */}
+      <div onClick={() => inputRef.current?.focus()} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 10, border: "1px solid " + (focused || open ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.08)"), background: focused || open ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.03)", cursor: "text", minWidth: 200, maxWidth: 340, transition: "all 0.15s" }}>
+        <span style={{ fontSize: 14, userSelect: "none" }}>{icon}</span>
+
+        {tags.length === 0 && inputValue === "" && (
+          <span style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", pointerEvents: "none", userSelect: "none" }}>Role…</span>
+        )}
+
+        {tags.map((tag) => (
+          <span key={tag} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 99, background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", color: "#a5b4fc", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>
+            {tag}
+            <button onClick={(e) => { e.stopPropagation(); removeTag(tag); }} style={{ background: "none", border: "none", color: "rgba(165,180,252,0.6)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: 13, display: "flex", alignItems: "center" }}>×</button>
+          </span>
+        ))}
+
+        {/* Input + spinner */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 80 }}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true); }}
+            onBlur={() => setFocused(false)}
+            placeholder={tags.length > 0 ? "+" : ""}
+            style={{ background: "none", border: "none", outline: "none", color: "#f1f5f9", fontSize: 13, fontFamily: "'DM Sans', sans-serif", width: "100%", padding: "2px 0", paddingRight: fetching ? 18 : 0 }}
+          />
+          {fetching && (
+            <svg style={{ position: "absolute", right: 0, flexShrink: 0, animation: "roleSpinFilter 0.8s linear infinite" }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          )}
+        </div>
+      </div>
+
+      {/* Hint */}
+      {inputValue.length > 0 && inputValue.length < 3 && (
+        <div style={{ fontSize: 11, color: "rgba(232,234,240,0.3)", marginTop: 4, paddingLeft: 4, fontFamily: "'DM Sans', sans-serif" }}>
+          {3 - inputValue.length} more character{3 - inputValue.length !== 1 ? "s" : ""} to search…
+        </div>
+      )}
+
+      {/* Suggestions dropdown */}
+      {open && suggestions.length > 0 && (
+        <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 6, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(13,17,23,0.97)", backdropFilter: "blur(12px)", boxShadow: "0 16px 40px rgba(0,0,0,0.55)", zIndex: 1000, minWidth: 240, maxWidth: 340, maxHeight: 240, overflowY: "auto" }}>
+          <div style={{ padding: "6px" }}>
+            {suggestions.map((role, idx) => {
+              const isActive = idx === activeIdx;
+              const matchIdx = role.toLowerCase().indexOf(inputValue.toLowerCase());
+              const before = matchIdx >= 0 ? role.slice(0, matchIdx) : role;
+              const match  = matchIdx >= 0 ? role.slice(matchIdx, matchIdx + inputValue.length) : "";
+              const after  = matchIdx >= 0 ? role.slice(matchIdx + inputValue.length) : "";
+              return (
+                <button key={role} type="button"
+                  onMouseDown={(e) => { e.preventDefault(); addTag(role); }}
+                  onMouseEnter={() => setActiveIdx(idx)}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: isActive ? "rgba(99,102,241,0.18)" : "transparent", color: isActive ? "#a5b4fc" : "rgba(232,234,240,0.75)", fontSize: 13, fontFamily: "'DM Sans', sans-serif", textAlign: "left", cursor: "pointer", transition: "background 0.1s" }}>
+                  {before}<strong style={{ color: "#a5b4fc", fontWeight: 700 }}>{match}</strong>{after}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes roleSpinFilter { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
@@ -847,8 +912,7 @@ function SalaryTable({ isLoggedIn }) {
             tags={selectedCompanies}
             onChange={setSelectedCompanies}
           />
-          <TagInput
-            label="Role"
+          <RoleTagAutocomplete
             icon="💼"
             tags={selectedRoles}
             onChange={setSelectedRoles}

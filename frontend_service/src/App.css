@@ -133,8 +133,8 @@
 }
 .hero-title {
   font-family: 'Syne', sans-serif;
-  font-size: clamp(40px, 6vw, 72px); font-weight: 800;
-  letter-spacing: -0.04em; line-height: 1.02;
+  font-size: clamp(40px, 6vw, 62px); font-weight: 700;
+  letter-spacing: -0.04em; line-height: 1;
   background: linear-gradient(160deg, #ffffff 40%, rgba(255,255,255,0.45));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }

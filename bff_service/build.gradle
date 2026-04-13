@@ -10,7 +10,7 @@ description = 'The BFF service acts as the single entry point for the frontend.'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 

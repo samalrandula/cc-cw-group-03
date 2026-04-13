@@ -85,7 +85,7 @@ public class BffController {
                 request,
                 ServiceNames.IDENTITY_SERVICE,
                 HttpMethod.POST,
-                "login",
+                "/login",
                 Object.class
         );
     }
@@ -127,8 +127,8 @@ public class BffController {
         return forwardingService.forward(
                 request,
                 ServiceNames.VOTE_SERVICE,
-                HttpMethod.POST,
-                "/vote",
+                HttpMethod.PUT,
+                "/api/vote",
                 Object.class
         );
     }

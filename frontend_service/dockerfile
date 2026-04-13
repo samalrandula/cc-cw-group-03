@@ -1,0 +1,33 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Accept build args
+ARG BFF_SERVICE_URL
+ARG EXCHANGE_API
+ARG COUNTRIES_API
+ARG JOB_ROLES_API
+
+# Set them as env for Vite build
+ENV VITE_API_BASE_URL=$BFF_SERVICE_URL
+ENV VITE_EXCHANGE_API=$EXCHANGE_API
+ENV VITE_COUNTRIES_API=$COUNTRIES_API
+ENV VITE_JOB_ROLES_API=$JOB_ROLES_API
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# Serve using nginx
+FROM nginx:alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

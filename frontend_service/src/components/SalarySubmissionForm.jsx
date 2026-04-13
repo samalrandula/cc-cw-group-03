@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { MenuItem } from "@mui/material";
-import { submitSalary, fetchCurrencies, fetchCountries } from "../api/salaryApi";
+import { useState, useEffect, useRef } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@mui/material";
+import { submitSalary, fetchCurrencies, fetchCountries, fetchJobRoles } from "../api/SalaryApi";
 
 const experienceLevels = [
   { label: "Intern",  value: "INTERN" },
@@ -88,21 +88,187 @@ const FieldSelect = ({ label, children, ...props }) => {
   );
 };
 
+/* ── Job Role Autocomplete ─────────────────────────────────────────────────
+   - User types freely; nothing happens until 3+ characters are entered
+   - After 3 chars a 300ms debounce fires fetchJobRoles(searchTerm)
+   - Results populate a dropdown; user can also keep their own typed value
+──────────────────────────────────────────────────────────────────────── */
+const JobRoleAutocomplete = ({ label, value, onChange }) => {
+  const [inputVal, setInputVal]     = useState(value || "");   // what's in the text box
+  const [options, setOptions]       = useState([]);             // API results
+  const [open, setOpen]             = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [focused, setFocused]       = useState(false);
+  const dropdownRef                 = useRef(null);
+  const debounceRef                 = useRef(null);
+
+  // Keep inputVal in sync if parent resets the form
+  useEffect(() => { setInputVal(value || ""); }, [value]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleInput = (e) => {
+    const text = e.target.value;
+    setInputVal(text);
+    // Always keep parent in sync with what was typed (free-text allowed)
+    onChange({ target: { name: "role", value: text } });
+
+    clearTimeout(debounceRef.current);
+
+    if (text.length < 3) {
+      setOptions([]);
+      setOpen(false);
+      return;
+    }
+
+    // Debounce: wait 300ms after the user stops typing
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const results = await fetchJobRoles(text);
+        setOptions(results);
+        setOpen(results.length > 0);
+      } catch {
+        setOptions([]);
+        setOpen(false);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  };
+
+  const handleSelect = (role) => {
+    setInputVal(role);
+    onChange({ target: { name: "role", value: role } });
+    setOpen(false);
+    setOptions([]);
+  };
+
+  const showSpinner = loading && inputVal.length >= 3;
+
+  return (
+    <div ref={dropdownRef} style={{ position: "relative" }}>
+      <label style={labelStyle}>{label}</label>
+
+      {/* Input row */}
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          value={inputVal}
+          placeholder="e.g. Software Developer"
+          onChange={handleInput}
+          onFocus={() => {
+            setFocused(true);
+            if (options.length > 0) setOpen(true);
+          }}
+          onBlur={() => setFocused(false)}
+          style={{
+            ...inputStyle,
+            paddingRight: 38,
+            borderColor: focused || open ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.1)",
+            background: focused || open ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.04)",
+          }}
+        />
+
+        {/* Right icon: spinner while loading, clear-X when there's text, search icon otherwise */}
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center" }}>
+          {showSpinner ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2.5" strokeLinecap="round"
+              style={{ animation: "roleSpinner 0.8s linear infinite" }}>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          ) : inputVal ? (
+            <button type="button" onMouseDown={(e) => { e.preventDefault(); handleSelect(""); }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(232,234,240,0.3)", fontSize: 16, lineHeight: 1, padding: 0 }}>
+              ×
+            </button>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(232,234,240,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          )}
+        </div>
+      </div>
+
+      {/* Hint shown before 3 chars */}
+      {inputVal.length > 0 && inputVal.length < 3 && (
+        <div style={{ fontSize: 11, color: "rgba(232,234,240,0.35)", marginTop: 5 }}>
+          Keep typing — suggestions appear after 3 characters
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, marginTop: 6,
+          borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)",
+          background: "rgba(13,17,23,0.97)", backdropFilter: "blur(12px)",
+          boxShadow: "0 16px 40px rgba(0,0,0,0.55)", zIndex: 1000,
+          maxHeight: 260, overflowY: "auto",
+        }}>
+          <div style={{ padding: "6px" }}>
+            {options.map((role) => {
+              const isSelected = value === role;
+              // Highlight the matched portion
+              const idx = role.toLowerCase().indexOf(inputVal.toLowerCase());
+              const before = role.slice(0, idx);
+              const match  = role.slice(idx, idx + inputVal.length);
+              const after  = role.slice(idx + inputVal.length);
+              return (
+                <button key={role} type="button" onClick={() => handleSelect(role)}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: isSelected ? "rgba(99,102,241,0.18)" : "transparent", color: isSelected ? "#a5b4fc" : "rgba(232,234,240,0.75)", fontSize: 13, fontFamily: "'DM Sans', sans-serif", textAlign: "left", cursor: "pointer", transition: "background 0.12s", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "rgba(99,102,241,0.18)" : "transparent"; }}
+                >
+                  <span>
+                    {before}
+                    <strong style={{ color: "#a5b4fc", fontWeight: 600 }}>{match}</strong>
+                    {after}
+                  </span>
+                  {isSelected && <span style={{ fontSize: 12, color: "#a5b4fc" }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes roleSpinner { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+};
+
 function SalarySubmissionForm({ onClose }) {
   const [formData, setFormData] = useState({
     company: "", country: "", role: "", salary: "",
     yearsOfExperience: "", experienceLevel: "MID", currency: "LKR", anonymize: false,
   });
-  const [message, setMessage]     = useState(null);
+  const [message, setMessage]       = useState(null);
   const [currencies, setCurrencies] = useState(["LKR", "USD"]);
   const [countries, setCountries]   = useState(["Sri Lanka", "United States"]);
   const [loading, setLoading]       = useState(false);
   const [success, setSuccess]       = useState(false);
 
   useEffect(() => {
-    Promise.all([fetchCountries(), fetchCurrencies()])
-      .then(([c, cur]) => { setCountries(c); setCurrencies(cur); })
-      .catch(() => {});
+    const loadFormData = async () => {
+      try {
+        const [c, cur] = await Promise.all([fetchCountries(), fetchCurrencies()]);
+        setCountries(c);
+        setCurrencies(cur);
+      } catch (err) {
+        console.error("Error loading countries/currencies", err);
+      }
+    };
+    loadFormData();
   }, []);
 
   const handleChange = (e) => {
@@ -172,21 +338,20 @@ function SalarySubmissionForm({ onClose }) {
           {/* Speed streaks */}
           {[[-1,-14],[1,2],[-1,16],[1,-28]].map(([dir, top], i) => (
             <div key={i} style={{
-              position: "absolute", top: `calc(50% + ${top}px)`, left: "50%",
-              width: 44 + i * 10, height: 1.5, borderRadius: 99,
-              background: `linear-gradient(90deg, transparent, rgba(52,211,153,0.45), transparent)`,
-              animation: `${dir < 0 ? "ssStreakL" : "ssStreakR"} 0.6s ease-out ${0.08 + i * 0.07}s both`,
+              position: "absolute", top, left: "50%", width: 280, height: 3, opacity: 0,
+              background: `linear-gradient(90deg, transparent, rgba(52,211,153,${0.3 + i*0.1}), transparent)`,
+              filter: "blur(1.5px)", animation: dir < 0 ? "ssStreakL 1.2s ease-out" : "ssStreakR 1.2s ease-out",
             }} />
           ))}
 
-          {/* Icon area */}
-          <div style={{ position: "relative", width: 120, height: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {/* Rings */}
-            {[0, 1, 2].map((i) => (
+          {/* Animated circle + particles ── */}
+          <div style={{ position: "relative", zIndex: 2, width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+
+            {/* Pulse rings */}
+            {[0,1].map((i) => (
               <div key={i} style={{
-                position: "absolute", width: 84, height: 84, borderRadius: "50%",
-                border: "1.5px solid rgba(52,211,153,0.45)",
-                animation: `ssRingPulse 1.5s ease-out ${i * 0.3}s infinite`, opacity: 0,
+                position: "absolute", inset: 0, borderRadius: "50%", border: "1.5px solid rgba(52,211,153,0.4)",
+                animation: `ssRingPulse 0.9s ease-out ${i * 0.3}s forwards`, opacity: 0,
               }} />
             ))}
 
@@ -293,9 +458,12 @@ function SalarySubmissionForm({ onClose }) {
             {countries.map((c) => <option key={c} value={c}>{c}</option>)}
           </FieldSelect>
 
-          {/* Role */}
-          <FieldInput label="Job Role" name="role" value={formData.role}
-            onChange={handleChange} required placeholder="e.g. Software Engineer" />
+          {/* Job Role — autocomplete: API called after 3 chars, free-text also accepted */}
+          <JobRoleAutocomplete
+            label="Job Role"
+            value={formData.role}
+            onChange={handleChange}
+          />
 
           {/* Salary + Currency */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 12 }}>
