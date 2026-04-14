@@ -28,7 +28,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/salary-submission-service
-      dockerfile: salary_submission_service/Dockerfile
+      dockerfile: salary_submission_service/dockerfile
       buildContext: salary_submission_service
       tags: |
         latest
@@ -40,7 +40,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/bff-service
-      dockerfile: bff_service/Dockerfile
+      dockerfile: bff_service/dockerfile
       buildContext: bff_service
       tags: |
         latest
@@ -52,7 +52,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/vote-service
-      dockerfile: vote_service/Dockerfile
+      dockerfile: vote_service/dockerfile
       buildContext: vote_service
       tags: |
         latest
@@ -64,7 +64,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/search-service
-      dockerfile: search_service/Dockerfile
+      dockerfile: search_service/dockerfile
       buildContext: search_service
       tags: |
         latest
@@ -76,7 +76,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/stats-service
-      dockerfile: stats_service/Dockerfile
+      dockerfile: stats_service/dockerfile
       buildContext: stats_service
       tags: |
         latest
@@ -88,7 +88,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/identity-service
-      dockerfile: identity_service/Dockerfile
+      dockerfile: identity_service/dockerfile
       buildContext: identity_service
       tags: |
         latest
@@ -100,7 +100,7 @@ steps:
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/frontend-service
-      dockerfile: frontend_service/Dockerfile
+      dockerfile: frontend_service/dockerfile
       buildContext: frontend_service
       arguments: |
         --build-arg BFF_SERVICE_URL=$(BFF_SERVICE_URL)
