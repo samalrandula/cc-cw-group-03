@@ -67,7 +67,7 @@ services:
     build:
       context: ./frontend_service
       args:
-        BFF_SERVICE_URL: ${BFF_SERVICE_URL}
+        API_BASE_URL: ${API_BASE_URL}
         EXCHANGE_API: ${EXCHANGE_API}
         COUNTRIES_API: ${COUNTRIES_API}
         JOB_ROLES_API: ${JOB_ROLES_API}
