@@ -1,0 +1,112 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  DOCKER_REGISTRY: samalrandula
+
+steps:
+
+  # -----------------------------
+  # Login to Docker Hub
+  # -----------------------------
+  - task: Docker@2
+    displayName: Login to Docker
+    inputs:
+      command: login
+      containerRegistry: 'dockerhub-connection'
+
+  # -----------------------------
+  # Build & Push ALL services
+  # -----------------------------
+
+  # Salary Submission
+  - task: Docker@2
+    displayName: Build & Push salary-submission-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/salary-submission-service
+      dockerfile: salary_submission_service/Dockerfile
+      buildContext: salary_submission_service
+      tags: |
+        latest
+        $(Build.BuildId)
+
+  # BFF
+  - task: Docker@2
+    displayName: Build & Push bff-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/bff-service
+      dockerfile: bff_service/Dockerfile
+      buildContext: bff_service
+      tags: |
+        latest
+        $(Build.BuildId)
+
+  # Vote
+  - task: Docker@2
+    displayName: Build & Push vote-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/vote-service
+      dockerfile: vote_service/Dockerfile
+      buildContext: vote_service
+      tags: |
+        latest
+        $(Build.BuildId)
+
+  # Search
+  - task: Docker@2
+    displayName: Build & Push search-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/search-service
+      dockerfile: search_service/Dockerfile
+      buildContext: search_service
+      tags: |
+        latest
+        $(Build.BuildId)
+
+  # Stats
+  - task: Docker@2
+    displayName: Build & Push stats-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/stats-service
+      dockerfile: stats_service/Dockerfile
+      buildContext: stats_service
+      tags: |
+        latest
+        $(Build.BuildId)
+
+  # Identity
+  - task: Docker@2
+    displayName: Build & Push identity-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/identity-service
+      dockerfile: identity_service/Dockerfile
+      buildContext: identity_service
+      tags: |
+        latest
+        $(Build.BuildId)
+
+  # Frontend (with build args)
+  - task: Docker@2
+    displayName: Build & Push frontend-service
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/frontend-service
+      dockerfile: frontend_service/Dockerfile
+      buildContext: frontend_service
+      arguments: |
+        --build-arg BFF_SERVICE_URL=$(BFF_SERVICE_URL)
+        --build-arg EXCHANGE_API=$(EXCHANGE_API)
+        --build-arg COUNTRIES_API=$(COUNTRIES_API)
+        --build-arg JOB_ROLES_API=$(JOB_ROLES_API)
+      tags: |
+        latest
+        $(Build.BuildId)
