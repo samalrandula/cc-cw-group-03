@@ -10,7 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class StatsService {
@@ -52,6 +53,15 @@ public class StatsService {
                             role,
                             experienceLevel
                     );
+        
+        } else if (location != null && experienceLevel != null) {
+
+            salaries = salaryRepository
+                    .findByStatusAndCountryAndExperienceLevel(
+                            SalaryStatus.APPROVED,
+                            location,
+                            experienceLevel
+                    );
 
         } else if (location != null) {
 
@@ -69,44 +79,78 @@ public class StatsService {
                             role
                     );
 
+        }else if (experienceLevel != null) {
+
+            salaries = salaryRepository
+                    .findByStatusAndExperienceLevel(
+                            SalaryStatus.APPROVED,
+                            experienceLevel
+                    );
+
         } else {
 
             salaries = salaryRepository
                     .findByStatus(SalaryStatus.APPROVED);
         }
 
-        int count = salaries.size();
+        if (salaries.isEmpty()) {
+            return StatsResponse.builder().count(0).build();
+        }
 
-        BigDecimal total = salaries.stream()
-                .map(SalarySubmission::getSalary)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal average = count > 0
-                ? total.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        List<BigDecimal> sorted = salaries.stream()
+        List<BigDecimal> sortedSalaries = salaries.stream()
                 .map(SalarySubmission::getSalary)
                 .sorted()
                 .toList();
 
-        BigDecimal median = BigDecimal.ZERO;
+        int count = sortedSalaries.size();
+        
+        // Basic Stats
+        BigDecimal total = sortedSalaries.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        double average = total.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP).doubleValue();
+        double min = sortedSalaries.get(0).doubleValue();
+        double max = sortedSalaries.get(count - 1).doubleValue();
 
-        if (count > 0) {
-            if (count % 2 == 0) {
-                BigDecimal first = sorted.get(count / 2 - 1);
-                BigDecimal second = sorted.get(count / 2);
-                median = first.add(second)
-                        .divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-            } else {
-                median = sorted.get(count / 2);
-            }
-        }
+        // Percentiles
+        Map<Integer, Double> percentiles = new HashMap<>();
+        percentiles.put(10, calculatePercentile(sortedSalaries, 10));
+        percentiles.put(25, calculatePercentile(sortedSalaries, 25));
+        percentiles.put(50, calculatePercentile(sortedSalaries, 50)); // Median
+        percentiles.put(75, calculatePercentile(sortedSalaries, 75));
+        percentiles.put(90, calculatePercentile(sortedSalaries, 90));
 
-        return new StatsResponse(
-                average.doubleValue(),
-                median.doubleValue(),
-                count
-        );
+        // Experience Breakdown
+        Map<String, StatsResponse.ExperienceStats> breakdown = salaries.stream()
+                .collect(Collectors.groupingBy(
+                        s -> s.getExperienceLevel().name(),
+                        Collectors.collectingAndThen(Collectors.toList(), list -> {
+                            double avg = list.stream()
+                                    .map(SalarySubmission::getSalary)
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                                    .divide(BigDecimal.valueOf(list.size()), 2, RoundingMode.HALF_UP)
+                                    .doubleValue();
+                            return StatsResponse.ExperienceStats.builder()
+                                    .average(avg)
+                                    .count(list.size())
+                                    .build();
+                        })
+                ));
+
+        return StatsResponse.builder()
+                .averageSalary(average)
+                .medianSalary(percentiles.get(50))
+                .count(count)
+                .minSalary(min)
+                .maxSalary(max)
+                .percentiles(percentiles)
+                .experienceBreakdown(breakdown)
+                .build();
+        
     }
+
+    private double calculatePercentile(List<BigDecimal> sortedData, double percentile) {
+        if (sortedData.isEmpty()) return 0.0;
+        int index = (int) Math.ceil(percentile / 100.0 * sortedData.size()) - 1;
+        return sortedData.get(Math.max(0, index)).doubleValue();
+    }
+
 }
