@@ -41,9 +41,12 @@ public class VoteServiceImpl implements VoteService {
             throw new IllegalArgumentException("Vote type is required");
         }
         
+        int userId = request.getUserId().intValue();
+        int submissionId = request.getSubmissionId().intValue();
+
         Optional<Vote> existingVote = voteRepository.findByUserIdAndSalarySubmissionId(
-            request.getUserId(), 
-            request.getSalarySubmissionId()
+            userId,
+            submissionId
         );
         
         String message;
@@ -53,38 +56,44 @@ public class VoteServiceImpl implements VoteService {
             if (vote.getVoteType() == request.getVoteType()) {
                 voteRepository.delete(vote);
                 message = "Vote removed successfully";
-                log.info("Vote toggled off: {} removed by user {} on submission {}", 
-                    request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
+                log.info("Vote toggled off: {} removed by user {} on submission {}",
+                    request.getVoteType(), userId, submissionId);
             } else {
                 vote.setVoteType(request.getVoteType());
                 vote.setCreatedAt(LocalDateTime.now());
                 voteRepository.save(vote);
                 message = "Vote changed successfully";
-                log.info("Vote changed: to {} by user {} on submission {}", 
-                    request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
+                log.info("Vote changed: to {} by user {} on submission {}",
+                    request.getVoteType(), userId, submissionId);
             }
         } else {
             Vote vote = new Vote();
-            vote.setUserId(request.getUserId());
-            vote.setSalarySubmissionId(request.getSalarySubmissionId());
+            vote.setUserId(userId);
+            vote.setSalarySubmissionId(submissionId);
             vote.setVoteType(request.getVoteType());
             vote.setCreatedAt(LocalDateTime.now());
             voteRepository.save(vote);
             message = "Vote recorded successfully";
-            log.info("Vote recorded: {} by user {} on submission {}", 
-                request.getVoteType(), request.getUserId(), request.getSalarySubmissionId());
+            log.info("Vote recorded: {} by user {} on submission {}",
+                request.getVoteType(), userId, submissionId);
         }
         
-        Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.UPVOTE);
-        Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(request.getSalarySubmissionId(), VoteType.DOWNVOTE);
-        
-        String status = determineAndUpdateStatus(request.getSalarySubmissionId(), upvoteCount, downvoteCount);
-        
+        Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(submissionId, VoteType.UPVOTE);
+        Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(submissionId, VoteType.DOWNVOTE);
+
+        String status = determineAndUpdateStatus(submissionId, upvoteCount, downvoteCount);
+
+        String userVoteStatus = voteRepository
+                .findByUserIdAndSalarySubmissionId(userId, submissionId)
+                .map(v -> v.getVoteType().name())
+                .orElse("NONE");
+
         return new VoteResponse(
             message,
             upvoteCount,
             downvoteCount,
-            status
+            status,
+            userVoteStatus
         );
     }
     
