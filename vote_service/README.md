@@ -113,3 +113,29 @@ Returns aggregate vote counts for a salary submission.
     "downvoteCount": 3
 }
 ```
+
+---
+
+## GET /vote/submission/{salarySubmissionId}/user/{userId}
+
+Returns the **current vote** for a given user on a given salary submission. Use this when you need the UI state without submitting a vote.
+
+**Path parameters:**
+
+- `salarySubmissionId` (integer) — ID of the salary submission.
+- `userId` (long) — ID of the user. Same trust model as **`POST /vote`**: set by the BFF after token validation when calling through the BFF; for direct service calls, supply the user id explicitly.
+
+**Headers:** None
+
+**Body:** None
+
+### Success response (200 OK)
+
+**`userVoteStatus`** is `UPVOTE`, `DOWNVOTE`, or **`NONE`** if that user has no vote on that submission.
+
+```json
+{
+    "message": "User vote status retrieved",
+    "userVoteStatus": "UPVOTE"
+}
+```
