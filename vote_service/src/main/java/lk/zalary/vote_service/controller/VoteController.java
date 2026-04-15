@@ -1,6 +1,7 @@
 package lk.zalary.vote_service.controller;
 
 import jakarta.validation.Valid;
+import lk.zalary.vote_service.dto.UserVoteStatusResponse;
 import lk.zalary.vote_service.dto.VoteCountResponse;
 import lk.zalary.vote_service.dto.VoteRequest;
 import lk.zalary.vote_service.dto.VoteResponse;
@@ -35,6 +36,17 @@ public class VoteController {
     @GetMapping("/submission/{salarySubmissionId}")
     public ResponseEntity<VoteCountResponse> getVoteCount(@PathVariable Integer salarySubmissionId) {
         VoteCountResponse response = voteService.getVoteCount(salarySubmissionId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Trusted caller (e.g. BFF) supplies userId explicitly — no JWT in this service.
+     */
+    @GetMapping("/submission/{salarySubmissionId}/user/{userId}")
+    public ResponseEntity<UserVoteStatusResponse> getUserVoteStatus(
+            @PathVariable Integer salarySubmissionId,
+            @PathVariable Long userId) {
+        UserVoteStatusResponse response = voteService.getUserVoteStatus(userId, salarySubmissionId);
         return ResponseEntity.ok(response);
     }
 }

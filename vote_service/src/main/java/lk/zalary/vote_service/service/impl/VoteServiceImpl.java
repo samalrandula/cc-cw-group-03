@@ -1,5 +1,6 @@
 package lk.zalary.vote_service.service.impl;
 
+import lk.zalary.vote_service.dto.UserVoteStatusResponse;
 import lk.zalary.vote_service.dto.VoteCountResponse;
 import lk.zalary.vote_service.dto.VoteRequest;
 import lk.zalary.vote_service.dto.VoteResponse;
@@ -101,14 +102,24 @@ public class VoteServiceImpl implements VoteService {
     public VoteCountResponse getVoteCount(Integer salarySubmissionId) {
         Long upvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.UPVOTE);
         Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(salarySubmissionId, VoteType.DOWNVOTE);
-        
+
         return new VoteCountResponse(
             "Vote count retrieved",
             upvoteCount,
             downvoteCount
         );
     }
-    
+
+    @Override
+    public UserVoteStatusResponse getUserVoteStatus(Long userId, Integer salarySubmissionId) {
+        int uid = userId.intValue();
+        String userVoteStatus = voteRepository
+                .findByUserIdAndSalarySubmissionId(uid, salarySubmissionId)
+                .map(v -> v.getVoteType().name())
+                .orElse("NONE");
+        return new UserVoteStatusResponse("User vote status retrieved", userVoteStatus);
+    }
+
     private String determineAndUpdateStatus(Integer salarySubmissionId, Long upvoteCount, Long downvoteCount) {
         String status = "PENDING";
         
