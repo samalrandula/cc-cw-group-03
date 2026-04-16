@@ -9,5 +9,4 @@ class forwardingServiceNamesApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }
