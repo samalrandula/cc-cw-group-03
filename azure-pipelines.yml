@@ -102,11 +102,6 @@ steps:
       repository: $(DOCKER_REGISTRY)/frontend-service
       dockerfile: frontend_service/dockerfile
       buildContext: frontend_service
-      arguments: |
-        --build-arg VITE_API_BASE_URL=$(VITE_API_BASE_URL)
-        --build-arg VITE_EXCHANGE_API=$(VITE_EXCHANGE_API)
-        --build-arg VITE_COUNTRIES_API=$(VITE_COUNTRIES_API)
-        --build-arg VITE_JOB_ROLES_API=$(VITE_JOB_ROLES_API)
       tags: |
         latest
         $(Build.BuildId)
