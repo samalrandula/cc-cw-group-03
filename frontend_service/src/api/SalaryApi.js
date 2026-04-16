@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
-const EXCHANGE_API = import.meta.env.VITE_EXCHANGE_API;
-const COUNTRIES_API = import.meta.env.VITE_COUNTRIES_API;
-const JOB_ROLES_API = import.meta.env.VITE_JOB_ROLES_API;
+const API_BASE = window.env.VITE_API_BASE_URL;
+const EXCHANGE_API = window.env.VITE_EXCHANGE_API;
+const COUNTRIES_API = window.env.VITE_COUNTRIES_API;
+const JOB_ROLES_API = window.env.VITE_JOB_ROLES_API;
 
 // ✅ Submit salary to backend
 export const submitSalary = async (salaryData) => {
