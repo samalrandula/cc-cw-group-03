@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@mui/material";
 import SalarySubmissionForm from "./SalarySubmissionForm";
 import { fetchSalaries, fetchCurrencies, fetchCountries, fetchJobRoles } from "../api/SalaryApi";
-import { submitVote } from "../api/VoteApi";
+import { submitVote, fetchVoteStatus } from "../api/VoteApi";
 import { submitReport, REPORT_REASONS } from "../api/ReportApi";
 
 /* ── Inline styles ── */
@@ -501,8 +501,8 @@ const VoteModal = ({ open, onClose, salary }) => {
   const [vote, setVote]             = useState("UPVOTE");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState(null);
-  // phase: "vote" | "success" | "transitioning" | "report" | "reportSuccess"
-  const [phase, setPhase]           = useState("vote");
+  // phase: "loading" | "vote" | "success" | "transitioning" | "report" | "reportSuccess"
+  const [phase, setPhase]           = useState("loading");
   const [successVote, setSuccessVote] = useState(null);
 
   // Report state
@@ -512,12 +512,27 @@ const VoteModal = ({ open, onClose, salary }) => {
   const [reportError, setReportError] = useState(null);
   const [commentFocused, setCommentFocused] = useState(false);
 
+  // Fetch the user's existing vote status as soon as the modal opens
   useEffect(() => {
-    if (open) {
-      setVote("UPVOTE"); setSubmitting(false); setError(null);
-      setPhase("vote"); setSuccessVote(null);
-      setReason(""); setComment(""); setReportError(null); setReportSubmitting(false);
-    }
+    if (!open || !salary?.id) return;
+
+    // Reset state first
+    setSubmitting(false); setError(null);
+    setPhase("loading"); setSuccessVote(null);
+    setReason(""); setComment(""); setReportError(null); setReportSubmitting(false);
+
+    fetchVoteStatus(salary.id)
+      .then((data) => {
+        const status = data?.userVoteStatus;
+        // Pre-select the button matching the existing vote; default to UPVOTE for NONE
+        setVote(status === "DOWNVOTE" ? "DOWNVOTE" : "UPVOTE");
+        setPhase("vote");
+      })
+      .catch(() => {
+        // Status fetch failed — fall back gracefully, still open the modal
+        setVote("UPVOTE");
+        setPhase("vote");
+      });
   }, [open, salary?.id]);
 
   const handleVoteSubmit = async () => {
@@ -581,7 +596,7 @@ const VoteModal = ({ open, onClose, salary }) => {
       `}</style>
 
       {/* ── VOTE phase ── */}
-      {(phase === "vote" || phase === "success" || phase === "transitioning") && (
+      {(phase === "loading" || phase === "vote" || phase === "success" || phase === "transitioning") && (
         <div style={{
           animation: phase === "transitioning" ? "voteSlideOut 0.32s cubic-bezier(0.4,0,1,1) both" : undefined,
         }}>
@@ -597,51 +612,78 @@ const VoteModal = ({ open, onClose, salary }) => {
           </DialogTitle>
 
           <DialogContent style={{ padding: "20px 28px 28px" }}>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16, marginTop: 8 }}>
-              {["UPVOTE", "DOWNVOTE"].map((v) => (
-                <button key={v} onClick={() => !submitting && setVote(v)}
-                  style={{
-                    flex: 1, padding: "12px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer",
-                    fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, transition: "all 0.15s",
-                    border: "1px solid " + (vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.5)" : "rgba(239,68,68,0.5)") : "rgba(255,255,255,0.08)"),
-                    background: vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)") : "rgba(255,255,255,0.03)",
-                    color: vote === v ? (v === "UPVOTE" ? "#34d399" : "#f87171") : "rgba(232,234,240,0.55)",
-                    opacity: submitting ? 0.6 : 1,
-                  }}>
-                  {v === "UPVOTE" ? "👍 Accurate" : "👎 Inaccurate"}
-                </button>
-              ))}
-            </div>
 
-            {vote === "DOWNVOTE" && phase === "vote" && (
+            {/* ── Loading skeleton while fetching vote status ── */}
+            {phase === "loading" && (
+              <div style={{ marginTop: 8, marginBottom: 16 }}>
+                <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                  {[0, 1].map((i) => (
+                    <div key={i} style={{ flex: 1, height: 48, borderRadius: 10, background: "rgba(255,255,255,0.05)", animation: "skeletonPulse 1.4s ease-in-out infinite", animationDelay: i * 0.15 + "s" }} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ flex: 1, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+                  <div style={{ flex: 2, height: 40, borderRadius: 10, background: "rgba(99,102,241,0.1)", animation: "skeletonPulse 1.4s ease-in-out infinite 0.2s" }} />
+                </div>
+                <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "rgba(232,234,240,0.3)", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.6)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.8s linear infinite" }}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Loading your vote status…
+                </div>
+              </div>
+            )}
+
+            {/* ── Vote buttons — shown once status is loaded, pre-selected from API ── */}
+            {phase !== "loading" && (
+              <div style={{ display: "flex", gap: 12, marginBottom: 16, marginTop: 8 }}>
+                {["UPVOTE", "DOWNVOTE"].map((v) => (
+                  <button key={v} onClick={() => !submitting && setVote(v)}
+                    style={{
+                      flex: 1, padding: "12px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer",
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, transition: "all 0.15s",
+                      border: "1px solid " + (vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.5)" : "rgba(239,68,68,0.5)") : "rgba(255,255,255,0.08)"),
+                      background: vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)") : "rgba(255,255,255,0.03)",
+                      color: vote === v ? (v === "UPVOTE" ? "#34d399" : "#f87171") : "rgba(232,234,240,0.55)",
+                      opacity: submitting ? 0.6 : 1,
+                    }}>
+                    {v === "UPVOTE" ? "👍 Accurate" : "👎 Inaccurate"}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {phase !== "loading" && vote === "DOWNVOTE" && phase === "vote" && (
               <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)", color: "rgba(251,146,60,0.8)", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
                 ⚑ After voting, you'll have the option to file a report with more details.
               </div>
             )}
 
-            {error && (
+            {phase !== "loading" && error && (
               <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
                 {error}
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={onClose} disabled={submitting}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "rgba(255,255,255,0.05)", color: "rgba(232,234,240,0.6)", border: "1px solid rgba(255,255,255,0.08)", opacity: submitting ? 0.5 : 1 }}>
-                Cancel
-              </button>
-              <button onClick={handleVoteSubmit} disabled={submitting}
-                style={{ flex: 2, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "linear-gradient(135deg, #6366f1, #4f46e5)", color: "#fff", border: "none", boxShadow: "0 4px 16px rgba(99,102,241,0.35)", opacity: submitting ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                {submitting ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.7s linear infinite" }}>
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                    </svg>
-                    Submitting…
-                  </>
-                ) : "Submit Vote"}
-              </button>
-            </div>
+            {phase !== "loading" && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={onClose} disabled={submitting}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "rgba(255,255,255,0.05)", color: "rgba(232,234,240,0.6)", border: "1px solid rgba(255,255,255,0.08)", opacity: submitting ? 0.5 : 1 }}>
+                  Cancel
+                </button>
+                <button onClick={handleVoteSubmit} disabled={submitting}
+                  style={{ flex: 2, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "linear-gradient(135deg, #6366f1, #4f46e5)", color: "#fff", border: "none", boxShadow: "0 4px 16px rgba(99,102,241,0.35)", opacity: submitting ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  {submitting ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.7s linear infinite" }}>
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      Submitting…
+                    </>
+                  ) : "Submit Vote"}
+                </button>
+              </div>
+            )}
           </DialogContent>
         </div>
       )}

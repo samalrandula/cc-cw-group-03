@@ -67,10 +67,10 @@ services:
     build:
       context: ./frontend_service
       args:
-        API_BASE_URL: ${API_BASE_URL}
-        EXCHANGE_API: ${EXCHANGE_API}
-        COUNTRIES_API: ${COUNTRIES_API}
-        JOB_ROLES_API: ${JOB_ROLES_API}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_EXCHANGE_API: ${VITE_EXCHANGE_API}
+        VITE_COUNTRIES_API: ${VITE_COUNTRIES_API}
+        VITE_JOB_ROLES_API: ${VITE_JOB_ROLES_API}
     container_name: frontend-service
     ports:
       - "3000:80"

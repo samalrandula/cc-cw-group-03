@@ -4,6 +4,9 @@ import jakarta.validation.constraints.NotNull;
 import lk.zalary.vote_service.util.VoteType;
 import lombok.Data;
 
+/**
+ * Inbound shape matches BFF after token validation: submissionId, voteType, userId.
+ */
 @Data
 public class VoteRequest {
     private Integer userId;
