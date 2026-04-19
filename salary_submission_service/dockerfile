@@ -18,7 +18,7 @@ RUN ./gradlew clean build -x test
 FROM eclipse-temurin:21-jre-alpine
 
 # Copy jar file into container
-COPY --from=builder /app/build/libs/*.jar ./
+COPY --from=builder /app/build/libs/*.jar app.jar
 
 # Expose application port
 EXPOSE 8081
