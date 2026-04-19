@@ -8,16 +8,17 @@ x-db-env: &db-env
 services:
 
   salary-submission-service:
-    build: ./salary_submission_service
+    image: ${DOCKER_REPO}/salary-submission-service:latest
+    platform: linux/amd64
     container_name: salary-submission-service
     ports:
       - "8081:8081"
     environment:
       <<: *db-env
 
-
   bff-service:
-    build: ./bff_service
+    image: ${DOCKER_REPO}/bff-service:latest
+    platform: linux/amd64
     container_name: bff-service
     ports:
       - "8082:8082"
@@ -30,7 +31,8 @@ services:
       IDENTITY_SERVICE_URL: ${IDENTITY_SERVICE_URL}
 
   vote-service:
-    build: ./vote_service
+    image: ${DOCKER_REPO}/vote-service:latest
+    platform: linux/amd64
     container_name: vote-service
     ports:
       - "8083:8083"
@@ -40,7 +42,8 @@ services:
       IDENTITY_SERVICE_URL: ${IDENTITY_SERVICE_URL}
 
   search-service:
-    build: ./search_service
+    image: ${DOCKER_REPO}/search-service:latest
+    platform: linux/amd64
     container_name: search-service
     ports:
       - "8084:8084"
@@ -48,7 +51,8 @@ services:
       <<: *db-env
 
   stats-service:
-    build: ./stats_service
+    image: ${DOCKER_REPO}/stats-service:latest
+    platform: linux/amd64
     container_name: stats-service
     ports:
       - "8085:8085"
@@ -56,7 +60,8 @@ services:
       <<: *db-env
 
   identity-service:
-    build: ./identity_service
+    image: ${DOCKER_REPO}/identity-service:latest
+    platform: linux/amd64
     container_name: identity-service
     ports:
       - "8086:8086"
@@ -64,16 +69,16 @@ services:
       <<: *db-env
 
   frontend-service:
-    build:
-      context: ./frontend_service
-    environment:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
-        VITE_EXCHANGE_API: ${VITE_EXCHANGE_API}
-        VITE_COUNTRIES_API: ${VITE_COUNTRIES_API}
-        VITE_JOB_ROLES_API: ${VITE_JOB_ROLES_API}
+    image: ${DOCKER_REPO}/frontend-service:latest
+    platform: linux/amd64
     container_name: frontend-service
     ports:
       - "3000:80"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_EXCHANGE_API: ${VITE_EXCHANGE_API}
+      VITE_COUNTRIES_API: ${VITE_COUNTRIES_API}
+      VITE_JOB_ROLES_API: ${VITE_JOB_ROLES_API}
     depends_on:
       - bff-service
       - salary-submission-service
@@ -81,4 +86,3 @@ services:
       - identity-service
       - vote-service
       - stats-service
-
