@@ -3,6 +3,7 @@ package lk.zalary.search_service.service;
 import lk.zalary.search_service.dto.SearchRequestDTO;
 import lk.zalary.search_service.dto.SearchResponseDTO;
 import lk.zalary.search_service.dto.SalaryResponseDTO;
+import lk.zalary.search_service.dto.VoteCountProjection;
 import lk.zalary.search_service.entity.Salary;
 import lk.zalary.search_service.repository.SalaryRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -50,7 +54,33 @@ public class SearchService {
         );
 
         log.info("Found {} salaries matching filters", results.getTotalElements());
-        return SearchResponseDTO.fromPage(results);
+
+        // Fetch vote counts for the salary IDs in this page
+        List<Integer> salaryIds = results.getContent().stream()
+                .map(Salary::getId)
+                .toList();
+
+        Map<Integer, VoteCountProjection> voteCountMap = getVoteCountMap(salaryIds);
+
+        List<SalaryResponseDTO> salaryDTOs = results.getContent().stream()
+                .map(salary -> {
+                    SalaryResponseDTO dto = SalaryResponseDTO.fromEntity(salary);
+                    VoteCountProjection voteCounts = voteCountMap.get(salary.getId());
+                    if (voteCounts != null) {
+                        dto.setUpvoteCount(voteCounts.getUpvoteCount());
+                        dto.setDownvoteCount(voteCounts.getDownvoteCount());
+                    }
+                    return dto;
+                })
+                .toList();
+
+        return SearchResponseDTO.builder()
+                .salaries(salaryDTOs)
+                .totalCount(results.getTotalElements())
+                .totalPages(results.getTotalPages())
+                .currentPage(results.getNumber())
+                .pageSize(results.getSize())
+                .build();
     }
 
     public List<String> getCountries() {
@@ -80,6 +110,22 @@ public class SearchService {
         log.info("Fetching salary with ID: {}", id);
         Salary salary = salaryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Salary not found with ID: " + id));
-        return SalaryResponseDTO.fromEntity(salary);
+        SalaryResponseDTO dto = SalaryResponseDTO.fromEntity(salary);
+
+        VoteCountProjection voteCounts = salaryRepository.findVoteCountBySalaryId(id);
+        if (voteCounts != null) {
+            dto.setUpvoteCount(voteCounts.getUpvoteCount());
+            dto.setDownvoteCount(voteCounts.getDownvoteCount());
+        }
+
+        return dto;
+    }
+
+    private Map<Integer, VoteCountProjection> getVoteCountMap(List<Integer> salaryIds) {
+        if (salaryIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return salaryRepository.findVoteCountsBySalaryIds(salaryIds).stream()
+                .collect(Collectors.toMap(VoteCountProjection::getSalaryId, v -> v));
     }
 }
