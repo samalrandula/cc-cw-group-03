@@ -487,7 +487,7 @@ const VoteSuccessOverlay = ({ voteType }) => {
       </div>
 
       <div style={{ marginTop: 20, fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: isUp ? "#34d399" : "#f87171", animation: "voteText 0.35s ease-out 0.15s both" }}>
-        {isUp ? "Marked as Accurate!" : "Marked as Inaccurate"}
+        {isUp ? "Upvoted successfully!" : "Downvoted successfully!"}
       </div>
       <div style={{ marginTop: 6, fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", animation: "voteText 0.35s ease-out 0.25s both" }}>
         Thanks for keeping the data honest
@@ -500,56 +500,88 @@ const VoteSuccessOverlay = ({ voteType }) => {
 const VoteModal = ({ open, onClose, salary }) => {
   const [vote, setVote]             = useState("UPVOTE");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState(null);
-  // phase: "loading" | "vote" | "success" | "transitioning" | "report" | "reportSuccess"
-  const [phase, setPhase]           = useState("loading");
+  const [voteError, setVoteError]   = useState(null);
+  // votePhase: "loading" | "idle" | "success"
+  const [votePhase, setVotePhase]   = useState("loading");
   const [successVote, setSuccessVote] = useState(null);
 
-  // Report state
-  const [reason, setReason]           = useState("");
-  const [comment, setComment]         = useState("");
+  // Report panel — independent of voting
+  const [reportOpen, setReportOpen]           = useState(false);
+  const [reason, setReason]                   = useState("");
+  const [comment, setComment]                 = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reportError, setReportError] = useState(null);
-  const [commentFocused, setCommentFocused] = useState(false);
+  const [reportError, setReportError]         = useState(null);
+  const [reportDone, setReportDone]           = useState(false);
+  const [commentFocused, setCommentFocused]   = useState(false);
 
-  // Fetch the user's existing vote status as soon as the modal opens
+  // Ref for the animated report panel container
+  const reportPanelRef = useRef(null);
+
+  // Reset + fetch vote status on open
   useEffect(() => {
     if (!open || !salary?.id) return;
 
-    // Reset state first
-    setSubmitting(false); setError(null);
-    setPhase("loading"); setSuccessVote(null);
-    setReason(""); setComment(""); setReportError(null); setReportSubmitting(false);
+    setSubmitting(false); setVoteError(null);
+    setVotePhase("loading"); setSuccessVote(null);
+    setReportOpen(false);
+    setReason(""); setComment(""); setReportError(null);
+    setReportSubmitting(false); setReportDone(false);
 
     fetchVoteStatus(salary.id)
       .then((data) => {
-        const status = data?.userVoteStatus;
-        // Pre-select the button matching the existing vote; default to UPVOTE for NONE
-        setVote(status === "DOWNVOTE" ? "DOWNVOTE" : "UPVOTE");
-        setPhase("vote");
+        setVote(data?.userVoteStatus === "DOWNVOTE" ? "DOWNVOTE" : "UPVOTE");
+        setVotePhase("idle");
       })
-      .catch(() => {
-        // Status fetch failed — fall back gracefully, still open the modal
-        setVote("UPVOTE");
-        setPhase("vote");
-      });
+      .catch(() => { setVote("UPVOTE"); setVotePhase("idle"); });
   }, [open, salary?.id]);
+
+  // Animate the report panel open / close by driving max-height + opacity
+  useEffect(() => {
+    const el = reportPanelRef.current;
+    if (!el) return;
+    if (reportOpen) {
+      // First render: make visible but measure natural height
+      el.style.display  = "block";
+      el.style.overflow = "hidden";
+      const h = el.scrollHeight;
+      el.style.maxHeight = "0px";
+      el.style.opacity   = "0";
+      // Force reflow, then animate to full height
+      void el.offsetHeight;
+      el.style.transition = "max-height 0.38s cubic-bezier(0.16,1,0.3,1), opacity 0.28s ease";
+      el.style.maxHeight  = h + "px";
+      el.style.opacity    = "1";
+      // After animation, unlock height so dynamic content (errors etc.) can grow
+      const tid = setTimeout(() => {
+        if (el) { el.style.maxHeight = "none"; el.style.overflow = "visible"; }
+      }, 420);
+      return () => clearTimeout(tid);
+    } else {
+      // Collapse: snapshot current height, then animate to 0
+      const h = el.scrollHeight;
+      el.style.maxHeight  = h + "px";
+      el.style.overflow   = "hidden";
+      void el.offsetHeight;
+      el.style.transition = "max-height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.22s ease";
+      el.style.maxHeight  = "0px";
+      el.style.opacity    = "0";
+      const tid = setTimeout(() => {
+        if (el) el.style.display = "none";
+      }, 340);
+      return () => clearTimeout(tid);
+    }
+  }, [reportOpen]);
 
   const handleVoteSubmit = async () => {
     if (!salary?.id) return;
-    setSubmitting(true); setError(null);
+    setSubmitting(true); setVoteError(null);
     try {
       await submitVote({ salarySubmissionId: salary.id, voteType: vote });
       setSuccessVote(vote);
-      setPhase("success");
-      if (vote === "DOWNVOTE") {
-        setTimeout(() => setPhase("transitioning"), 1800);
-        setTimeout(() => setPhase("report"), 2150);
-      } else {
-        setTimeout(() => onClose(), 2000);
-      }
+      setVotePhase("success");
+      setTimeout(() => onClose(), 2000);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to submit vote. Please try again.");
+      setVoteError(err?.response?.data?.message || "Failed to submit vote. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -560,7 +592,7 @@ const VoteModal = ({ open, onClose, salary }) => {
     setReportSubmitting(true); setReportError(null);
     try {
       await submitReport({ submissionId: salary.id, reason, comment });
-      setPhase("reportSuccess");
+      setReportDone(true);
       setTimeout(() => onClose(), 2200);
     } catch (err) {
       setReportError(err?.response?.data?.message || "Failed to submit report. Please try again.");
@@ -571,171 +603,181 @@ const VoteModal = ({ open, onClose, salary }) => {
 
   if (!salary) return null;
 
-  const isCloseable = phase === "vote" || phase === "report";
-
   return (
-    <Dialog open={open} onClose={isCloseable ? onClose : undefined}
+    <Dialog open={open} onClose={votePhase === "idle" ? onClose : undefined}
       PaperProps={{ style: {
         background: "#0d1117", border: "1px solid rgba(255,255,255,0.09)",
         borderRadius: 16, boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
         minWidth: 380, position: "relative", overflow: "hidden",
+        transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)",
       }}}>
 
       <style>{`
-        @keyframes voteSlideOut  { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(-52px)} }
-        @keyframes reportSlideIn { from{opacity:0;transform:translateX(56px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes rptFlagWave   { 0%{transform:rotate(-18deg) scale(0.3);opacity:0} 45%{transform:rotate(8deg) scale(1.15)} 65%{transform:rotate(-4deg) scale(0.97)} 80%{transform:rotate(2deg)} 100%{transform:rotate(0deg) scale(1);opacity:1} }
-        @keyframes rptRing       { 0%{transform:scale(0.5);opacity:0.6} 100%{transform:scale(2.1);opacity:0} }
-        @keyframes rptTextIn     { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes rptPop1       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-32px,-38px) scale(1);opacity:0} }
-        @keyframes rptPop2       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(32px,-38px) scale(1);opacity:0} }
-        @keyframes rptPop3       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-42px,4px) scale(1);opacity:0} }
-        @keyframes rptPop4       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(42px,4px) scale(1);opacity:0} }
-        @keyframes rptBarGrow    { from{width:0} to{width:100%} }
-        @keyframes rptSuccessIn  { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+        @keyframes rptFlagWave { 0%{transform:rotate(-18deg) scale(0.3);opacity:0} 45%{transform:rotate(8deg) scale(1.15)} 65%{transform:rotate(-4deg) scale(0.97)} 80%{transform:rotate(2deg)} 100%{transform:rotate(0deg) scale(1);opacity:1} }
+        @keyframes rptRing     { 0%{transform:scale(0.5);opacity:0.6} 100%{transform:scale(2.1);opacity:0} }
+        @keyframes rptTextIn   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes rptPop1     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-32px,-38px) scale(1);opacity:0} }
+        @keyframes rptPop2     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(32px,-38px) scale(1);opacity:0} }
+        @keyframes rptPop3     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-42px,4px) scale(1);opacity:0} }
+        @keyframes rptPop4     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(42px,4px) scale(1);opacity:0} }
+        @keyframes rptBarGrow  { from{width:0} to{width:100%} }
+        @keyframes rptSuccessIn{ from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
       `}</style>
 
-      {/* ── VOTE phase ── */}
-      {(phase === "loading" || phase === "vote" || phase === "success" || phase === "transitioning") && (
-        <div style={{
-          animation: phase === "transitioning" ? "voteSlideOut 0.32s cubic-bezier(0.4,0,1,1) both" : undefined,
-        }}>
-          {(phase === "success" || phase === "transitioning") && (
-            <VoteSuccessOverlay voteType={successVote} />
-          )}
+      {/* ── Vote success overlay ── */}
+      {votePhase === "success" && <VoteSuccessOverlay voteType={successVote} />}
 
-          <DialogTitle style={{ padding: "24px 28px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 18 }}>
+      {/* ── Header ── */}
+      <DialogTitle style={{ padding: "24px 28px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 18 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div>
             Cast your vote
             <div style={{ fontSize: 13, fontWeight: 400, color: "rgba(232,234,240,0.4)", marginTop: 4, fontFamily: "'DM Sans', sans-serif" }}>
               {salary.company} · {salary.role}
             </div>
-          </DialogTitle>
-
-          <DialogContent style={{ padding: "20px 28px 28px" }}>
-
-            {/* ── Loading skeleton while fetching vote status ── */}
-            {phase === "loading" && (
-              <div style={{ marginTop: 8, marginBottom: 16 }}>
-                <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-                  {[0, 1].map((i) => (
-                    <div key={i} style={{ flex: 1, height: 48, borderRadius: 10, background: "rgba(255,255,255,0.05)", animation: "skeletonPulse 1.4s ease-in-out infinite", animationDelay: i * 0.15 + "s" }} />
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <div style={{ flex: 1, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
-                  <div style={{ flex: 2, height: 40, borderRadius: 10, background: "rgba(99,102,241,0.1)", animation: "skeletonPulse 1.4s ease-in-out infinite 0.2s" }} />
-                </div>
-                <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "rgba(232,234,240,0.3)", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.6)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.8s linear infinite" }}>
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                  Loading your vote status…
-                </div>
-              </div>
-            )}
-
-            {/* ── Vote buttons — shown once status is loaded, pre-selected from API ── */}
-            {phase !== "loading" && (
-              <div style={{ display: "flex", gap: 12, marginBottom: 16, marginTop: 8 }}>
-                {["UPVOTE", "DOWNVOTE"].map((v) => (
-                  <button key={v} onClick={() => !submitting && setVote(v)}
-                    style={{
-                      flex: 1, padding: "12px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer",
-                      fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, transition: "all 0.15s",
-                      border: "1px solid " + (vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.5)" : "rgba(239,68,68,0.5)") : "rgba(255,255,255,0.08)"),
-                      background: vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)") : "rgba(255,255,255,0.03)",
-                      color: vote === v ? (v === "UPVOTE" ? "#34d399" : "#f87171") : "rgba(232,234,240,0.55)",
-                      opacity: submitting ? 0.6 : 1,
-                    }}>
-                    {v === "UPVOTE" ? "👍 Accurate" : "👎 Inaccurate"}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {phase !== "loading" && vote === "DOWNVOTE" && phase === "vote" && (
-              <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)", color: "rgba(251,146,60,0.8)", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-                ⚑ After voting, you'll have the option to file a report with more details.
-              </div>
-            )}
-
-            {phase !== "loading" && error && (
-              <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-                {error}
-              </div>
-            )}
-
-            {phase !== "loading" && (
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={onClose} disabled={submitting}
-                  style={{ flex: 1, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "rgba(255,255,255,0.05)", color: "rgba(232,234,240,0.6)", border: "1px solid rgba(255,255,255,0.08)", opacity: submitting ? 0.5 : 1 }}>
-                  Cancel
-                </button>
-                <button onClick={handleVoteSubmit} disabled={submitting}
-                  style={{ flex: 2, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "linear-gradient(135deg, #6366f1, #4f46e5)", color: "#fff", border: "none", boxShadow: "0 4px 16px rgba(99,102,241,0.35)", opacity: submitting ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  {submitting ? (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.7s linear infinite" }}>
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                      Submitting…
-                    </>
-                  ) : "Submit Vote"}
-                </button>
-              </div>
-            )}
-          </DialogContent>
+          </div>
         </div>
-      )}
+      </DialogTitle>
 
-      {/* ── REPORT phase ── */}
-      {(phase === "report" || phase === "reportSuccess") && (
-        <div style={{ animation: phase === "report" ? "reportSlideIn 0.38s cubic-bezier(0.16,1,0.3,1) both" : undefined, position: "relative" }}>
+      <DialogContent style={{ padding: "20px 28px 28px" }}>
 
-          {/* Report success overlay */}
-          {phase === "reportSuccess" && (
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: 16, zIndex: 10,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              background: "radial-gradient(ellipse at 50% 55%, rgba(251,146,60,0.12) 0%, #0d1117 70%)",
-              animation: "rptSuccessIn 0.28s cubic-bezier(0.16,1,0.3,1)",
-            }}>
-              <div style={{ position: "relative", width: 110, height: 110, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {[0,1].map(i => <div key={i} style={{ position: "absolute", width: 78, height: 78, borderRadius: "50%", border: "1.5px solid rgba(251,146,60,0.4)", animation: `rptRing 1.3s ease-out ${i*0.28}s infinite`, opacity: 0 }} />)}
-                <div style={{ width: 74, height: 74, borderRadius: "50%", zIndex: 1, position: "relative", background: "rgba(251,146,60,0.12)", border: "1.5px solid rgba(251,146,60,0.4)", boxShadow: "0 0 28px rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, animation: "rptFlagWave 0.6s cubic-bezier(.36,.07,.19,.97) both" }}>⚑</div>
-                {["✦","✦","✧","✦"].map((p,i) => <div key={i} style={{ position: "absolute", fontSize: 8, color: i%2===0?"#fb923c":"#fcd34d", animation: `rptPop${i+1} 0.65s ease-out 0.2s forwards`, opacity: 0 }}>{p}</div>)}
+        {/* ── Loading skeleton ── */}
+        {votePhase === "loading" && (
+          <div style={{ marginTop: 8, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              {[0, 1].map((i) => (
+                <div key={i} style={{ flex: 1, height: 48, borderRadius: 10, background: "rgba(255,255,255,0.05)", animation: "skeletonPulse 1.4s ease-in-out infinite", animationDelay: i * 0.15 + "s" }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+              <div style={{ flex: 2, height: 40, borderRadius: 10, background: "rgba(99,102,241,0.1)", animation: "skeletonPulse 1.4s ease-in-out infinite 0.2s" }} />
+            </div>
+            <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "rgba(232,234,240,0.3)", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.6)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.8s linear infinite" }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+              Loading your vote status…
+            </div>
+          </div>
+        )}
+
+        {/* ── Vote buttons ── */}
+        {votePhase !== "loading" && (
+          <>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16, marginTop: 8 }}>
+              {["UPVOTE", "DOWNVOTE"].map((v) => (
+                <button key={v} onClick={() => !submitting && setVote(v)}
+                  style={{
+                    flex: 1, padding: "12px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer",
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, transition: "all 0.15s",
+                    border: "1px solid " + (vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.5)" : "rgba(239,68,68,0.5)") : "rgba(255,255,255,0.08)"),
+                    background: vote === v ? (v === "UPVOTE" ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)") : "rgba(255,255,255,0.03)",
+                    color: vote === v ? (v === "UPVOTE" ? "#34d399" : "#f87171") : "rgba(232,234,240,0.55)",
+                    opacity: submitting ? 0.6 : 1,
+                  }}>
+                  {v === "UPVOTE" ? "👍 Upvote" : "👎 Downvote"}
+                </button>
+              ))}
+            </div>
+
+            {voteError && (
+              <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
+                {voteError}
               </div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 18, color: "#fb923c", marginTop: 20, animation: "rptTextIn 0.38s ease-out 0.22s both" }}>Report submitted</div>
-              <div style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", marginTop: 6, animation: "rptTextIn 0.38s ease-out 0.32s both" }}>We'll review this entry soon</div>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, overflow: "hidden", borderRadius: "0 0 16px 16px" }}>
-                <div style={{ height: "100%", background: "linear-gradient(90deg, #fb923c, #fcd34d)", animation: "rptBarGrow 2s linear 0.15s both" }} />
+            )}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={onClose} disabled={submitting}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "rgba(255,255,255,0.05)", color: "rgba(232,234,240,0.6)", border: "1px solid rgba(255,255,255,0.08)", opacity: submitting ? 0.5 : 1 }}>
+                Cancel
+              </button>
+              <button onClick={handleVoteSubmit} disabled={submitting}
+                style={{ flex: 2, padding: "10px 0", borderRadius: 10, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: "linear-gradient(135deg, #6366f1, #4f46e5)", color: "#fff", border: "none", boxShadow: "0 4px 16px rgba(99,102,241,0.35)", opacity: submitting ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {submitting ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.7s linear infinite" }}>
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                    Submitting…
+                  </>
+                ) : "Submit Vote"}
+              </button>
+            </div>
+
+            {/* Report button — below submit, only when not already done */}
+            {!reportDone && (
+              <button
+                onClick={() => { setReportOpen((v) => !v); setReportError(null); }}
+                style={{
+                  width: "100%", marginTop: 10, padding: "8px 0", borderRadius: 10,
+                  cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                  fontWeight: 500, transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  background: reportOpen ? "rgba(251,146,60,0.1)" : "transparent",
+                  color: reportOpen ? "#fb923c" : "rgba(232,234,240,0.35)",
+                  border: reportOpen ? "1px solid rgba(251,146,60,0.3)" : "1px solid transparent",
+                }}
+              >
+                <span style={{ fontSize: 12 }}>⚑</span>
+                {reportOpen ? "Hide report" : "Report this entry"}
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ── Report panel — always rendered, height animated via ref ── */}
+        <div
+          ref={reportPanelRef}
+          style={{ display: "none", overflow: "hidden", maxHeight: 0, opacity: 0 }}
+        >
+          {/* inner wrapper gives the panel its padding + border */}
+          <div style={{
+            marginTop: 20,
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+            paddingTop: 18,
+            position: "relative",
+          }}>
+
+            {/* Report success overlay */}
+            {reportDone && (
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: 12, zIndex: 10,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                background: "radial-gradient(ellipse at 50% 55%, rgba(251,146,60,0.14) 0%, rgba(13,17,23,0.98) 70%)",
+                animation: "rptSuccessIn 0.28s cubic-bezier(0.16,1,0.3,1)",
+              }}>
+                <div style={{ position: "relative", width: 90, height: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {[0,1].map(i => <div key={i} style={{ position: "absolute", width: 68, height: 68, borderRadius: "50%", border: "1.5px solid rgba(251,146,60,0.4)", animation: `rptRing 1.3s ease-out ${i*0.28}s infinite`, opacity: 0 }} />)}
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", zIndex: 1, position: "relative", background: "rgba(251,146,60,0.12)", border: "1.5px solid rgba(251,146,60,0.4)", boxShadow: "0 0 24px rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, animation: "rptFlagWave 0.6s cubic-bezier(.36,.07,.19,.97) both" }}>⚑</div>
+                  {["✦","✦","✧","✦"].map((p,i) => <div key={i} style={{ position: "absolute", fontSize: 8, color: i%2===0?"#fb923c":"#fcd34d", animation: `rptPop${i+1} 0.65s ease-out 0.2s forwards`, opacity: 0 }}>{p}</div>)}
+                </div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "#fb923c", marginTop: 14, animation: "rptTextIn 0.38s ease-out 0.22s both" }}>Report submitted</div>
+                <div style={{ fontSize: 12, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", marginTop: 4, animation: "rptTextIn 0.38s ease-out 0.32s both" }}>We'll review this entry soon</div>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, overflow: "hidden", borderRadius: "0 0 12px 12px" }}>
+                  <div style={{ height: "100%", background: "linear-gradient(90deg, #fb923c, #fcd34d)", animation: "rptBarGrow 2s linear 0.15s both" }} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <DialogTitle style={{ padding: "22px 24px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 17 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 15 }}>⚑</span> Report entry
-              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 500, color: "rgba(251,146,60,0.65)", background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 99, padding: "2px 9px", letterSpacing: "0.04em" }}>
-                after inaccurate vote
-              </span>
+            {/* Report header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+              <span style={{ fontSize: 14 }}>⚑</span>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#fb923c" }}>Report this entry</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(251,146,60,0.55)", background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)", borderRadius: 99, padding: "2px 8px" }}>optional</span>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 400, color: "rgba(232,234,240,0.35)", marginTop: 4, fontFamily: "'DM Sans', sans-serif" }}>
-              {salary.company} · {salary.role}
-            </div>
-          </DialogTitle>
 
-          <DialogContent style={{ padding: "16px 24px 24px" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 10 }}>
+            {/* Reason */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
               Reason <span style={{ color: "#f87171" }}>*</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 18 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
               {REPORT_REASONS.map((r) => {
                 const selected = reason === r;
                 return (
                   <button key={r} onClick={() => { setReason(r); setReportError(null); }}
                     style={{
-                      textAlign: "left", padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                      textAlign: "left", padding: "9px 13px", borderRadius: 9, cursor: "pointer",
                       fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: selected ? 600 : 400,
                       transition: "all 0.13s",
                       border: `1px solid ${selected ? "rgba(251,146,60,0.5)" : "rgba(255,255,255,0.07)"}`,
@@ -743,8 +785,8 @@ const VoteModal = ({ open, onClose, salary }) => {
                       color: selected ? "#fb923c" : "rgba(232,234,240,0.65)",
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
-                    <span style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selected ? "#fb923c" : "rgba(255,255,255,0.2)"}`, background: selected ? "#fb923c" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.13s" }}>
-                      {selected && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0d1117", display: "block" }} />}
+                    <span style={{ width: 15, height: 15, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selected ? "#fb923c" : "rgba(255,255,255,0.2)"}`, background: selected ? "#fb923c" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.13s" }}>
+                      {selected && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#0d1117", display: "block" }} />}
                     </span>
                     {r}
                   </button>
@@ -752,7 +794,8 @@ const VoteModal = ({ open, onClose, salary }) => {
               })}
             </div>
 
-            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
+            {/* Comment */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 7 }}>
               Additional comment <span style={{ color: "rgba(232,234,240,0.25)", textTransform: "none", fontWeight: 400, letterSpacing: 0 }}> — optional</span>
             </div>
             <textarea
@@ -763,29 +806,29 @@ const VoteModal = ({ open, onClose, salary }) => {
               placeholder="Any extra details that might help our review…"
               maxLength={400} rows={3}
               style={{
-                width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 10, resize: "none",
+                width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 9, resize: "none",
                 background: commentFocused ? "rgba(251,146,60,0.06)" : "rgba(255,255,255,0.03)",
                 border: `1px solid ${commentFocused ? "rgba(251,146,60,0.4)" : "rgba(255,255,255,0.08)"}`,
                 color: "#f1f5f9", fontSize: 13, fontFamily: "'DM Sans', sans-serif",
                 outline: "none", transition: "all 0.15s", marginBottom: 4,
               }}
             />
-            <div style={{ fontSize: 11, color: "rgba(232,234,240,0.25)", textAlign: "right", marginBottom: 18 }}>{comment.length}/400</div>
+            <div style={{ fontSize: 11, color: "rgba(232,234,240,0.25)", textAlign: "right", marginBottom: 14 }}>{comment.length}/400</div>
 
             {reportError && (
-              <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              <div style={{ marginBottom: 12, padding: "9px 13px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
                 {reportError}
               </div>
             )}
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={onClose} disabled={reportSubmitting}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 10, cursor: reportSubmitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: "rgba(255,255,255,0.04)", color: "rgba(232,234,240,0.55)", border: "1px solid rgba(255,255,255,0.07)", opacity: reportSubmitting ? 0.5 : 1 }}>
-                Skip
+              <button onClick={() => { setReportOpen(false); setReason(""); setComment(""); setReportError(null); }} disabled={reportSubmitting}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 9, cursor: reportSubmitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: "rgba(255,255,255,0.04)", color: "rgba(232,234,240,0.5)", border: "1px solid rgba(255,255,255,0.07)", opacity: reportSubmitting ? 0.5 : 1 }}>
+                Cancel
               </button>
               <button onClick={handleReportSubmit} disabled={reportSubmitting || !reason}
                 style={{
-                  flex: 2, padding: "10px 0", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
+                  flex: 2, padding: "9px 0", borderRadius: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
                   cursor: reportSubmitting || !reason ? "not-allowed" : "pointer",
                   background: !reason ? "rgba(255,255,255,0.04)" : reportSubmitting ? "rgba(251,146,60,0.3)" : "linear-gradient(135deg, #fb923c, #f97316)",
                   color: !reason ? "rgba(232,234,240,0.3)" : "#fff",
@@ -804,12 +847,14 @@ const VoteModal = ({ open, onClose, salary }) => {
                 ) : "Submit Report"}
               </button>
             </div>
-          </DialogContent>
-        </div>
-      )}
+          </div>{/* end report panel inner */}
+        </div>{/* end report panel animated wrapper */}
+
+      </DialogContent>
     </Dialog>
   );
 };
+
 
 /* ── Main component ── */
 function SalaryTable({ isLoggedIn }) {

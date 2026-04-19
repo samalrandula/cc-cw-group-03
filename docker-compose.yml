@@ -75,6 +75,7 @@ services:
     ports:
       - "3000:80"
     depends_on:
+      - bff-service
       - salary-submission-service
       - search-service
       - identity-service
