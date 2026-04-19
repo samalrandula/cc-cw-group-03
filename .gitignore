@@ -1,1 +1,14 @@
+# Gradle caches
+**/caches/
+**/.gradle/
+
+# Build output
+**/build/
+**/bin/
+
+# IDE
 .idea/
+*.iml
+.vscode/
+*.swp
+*.swo

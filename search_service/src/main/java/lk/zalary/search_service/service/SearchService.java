@@ -1,8 +1,10 @@
 package lk.zalary.search_service.service;
 
+import lk.zalary.search_service.client.VoteServiceClient;
 import lk.zalary.search_service.dto.SearchRequestDTO;
 import lk.zalary.search_service.dto.SearchResponseDTO;
 import lk.zalary.search_service.dto.SalaryResponseDTO;
+import lk.zalary.search_service.dto.VoteCountResponse;
 import lk.zalary.search_service.entity.Salary;
 import lk.zalary.search_service.repository.SalaryRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.List;
 public class SearchService {
 
     private final SalaryRepository salaryRepository;
+    private final VoteServiceClient voteServiceClient;
 
     private static final int MAX_PAGE_SIZE = 100;
     private static final int DEFAULT_PAGE_SIZE = 20;
@@ -50,7 +53,10 @@ public class SearchService {
         );
 
         log.info("Found {} salaries matching filters", results.getTotalElements());
-        return SearchResponseDTO.fromPage(results);
+
+        SearchResponseDTO response = SearchResponseDTO.fromPage(results);
+        response.getSalaries().forEach(this::enrichWithVoteCounts);
+        return response;
     }
 
     public List<String> getCountries() {
@@ -80,6 +86,14 @@ public class SearchService {
         log.info("Fetching salary with ID: {}", id);
         Salary salary = salaryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Salary not found with ID: " + id));
-        return SalaryResponseDTO.fromEntity(salary);
+        SalaryResponseDTO dto = SalaryResponseDTO.fromEntity(salary);
+        enrichWithVoteCounts(dto);
+        return dto;
+    }
+
+    private void enrichWithVoteCounts(SalaryResponseDTO dto) {
+        VoteCountResponse votes = voteServiceClient.getVoteCounts(dto.getId());
+        dto.setUpvoteCount(votes.getUpvoteCount());
+        dto.setDownvoteCount(votes.getDownvoteCount());
     }
 }

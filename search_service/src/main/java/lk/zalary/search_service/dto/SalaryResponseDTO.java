@@ -30,6 +30,9 @@ public class SalaryResponseDTO {
 
     private LocalDateTime submittedAt;
 
+    private Long upvoteCount;
+    private Long downvoteCount;
+
     public static SalaryResponseDTO fromEntity(Salary salary) {
         return SalaryResponseDTO.builder()
                 .id(salary.getId())
@@ -43,6 +46,8 @@ public class SalaryResponseDTO {
                 .yearsOfExperience(salary.getYearsOfExperience())
                 .anonymize(salary.getAnonymize())
                 .submittedAt(salary.getSubmittedAt())
+                .upvoteCount(0L)
+                .downvoteCount(0L)
                 .build();
     }
 }
