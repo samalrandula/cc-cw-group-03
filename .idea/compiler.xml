@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel>
+      <module name="bff_service" target="21" />
+      <module name="bff_service.main" target="21" />
+      <module name="bff_service.test" target="21" />
+      <module name="identity_service" target="21" />
+      <module name="identity_service.main" target="21" />
+      <module name="identity_service.test" target="21" />
+      <module name="salary_submission_service" target="21" />
+      <module name="salary_submission_service.main" target="21" />
+      <module name="salary_submission_service.test" target="21" />
+      <module name="search_service" target="21" />
+      <module name="search_service.main" target="21" />
+      <module name="search_service.test" target="21" />
+      <module name="stats_service" target="21" />
+      <module name="stats_service.main" target="21" />
+      <module name="stats_service.test" target="21" />
+      <module name="vote_service" target="21" />
+      <module name="vote_service.main" target="21" />
+      <module name="vote_service.test" target="21" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

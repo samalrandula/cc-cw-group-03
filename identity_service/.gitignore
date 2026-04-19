@@ -1,0 +1,12 @@
+# Gradle
+.gradle/
+build/
+
+# IDE files
+.idea/
+*.iml
+
+# OS / misc
+*.log
+*.tmp
+*.swp
