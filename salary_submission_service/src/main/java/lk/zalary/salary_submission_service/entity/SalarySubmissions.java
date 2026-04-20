@@ -2,6 +2,7 @@ package lk.zalary.salary_submission_service.entity;
 
 import jakarta.persistence.*;
 import lk.zalary.salary_submission_service.util.ExperienceLevel;
+import lk.zalary.salary_submission_service.util.SalaryStatus;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -48,4 +49,8 @@ public class SalarySubmissions {
 
     @Column(nullable = false)
     private Boolean anonymize = false;
+
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "salary_status_enum")
+    private SalaryStatus status = SalaryStatus.PENDING;
 }

@@ -1,5 +1,6 @@
 package lk.zalary.bff_service.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 import jakarta.validation.constraints.*;
 
@@ -7,6 +8,7 @@ import jakarta.validation.constraints.*;
 public class VoteRequest {
 
     @NotNull(message = "Submission ID is required")
+    @JsonAlias("salarySubmissionId")
     private Long submissionId;
 
     @NotBlank(message = "Vote type is required")
