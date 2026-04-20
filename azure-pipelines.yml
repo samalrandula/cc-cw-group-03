@@ -10,6 +10,59 @@ variables:
 steps:
 
   # -----------------------------
+  # Detect Changed Services
+  # -----------------------------
+  - script: |
+      echo "Detecting changed services..."
+      
+      git fetch origin main
+      
+      CHANGED_FILES=$(git diff --name-only origin/main HEAD)
+      
+      echo "Changed files:"
+      echo "$CHANGED_FILES"
+      
+      # Default all to false
+      echo "##vso[task.setvariable variable=salaryChanged]false"
+      echo "##vso[task.setvariable variable=bffChanged]false"
+      echo "##vso[task.setvariable variable=voteChanged]false"
+      echo "##vso[task.setvariable variable=searchChanged]false"
+      echo "##vso[task.setvariable variable=statsChanged]false"
+      echo "##vso[task.setvariable variable=identityChanged]false"
+      echo "##vso[task.setvariable variable=frontendChanged]false"
+      
+      # Detect changes
+      if echo "$CHANGED_FILES" | grep -q "^salary_submission_service/"; then
+        echo "##vso[task.setvariable variable=salaryChanged]true"
+      fi
+      
+      if echo "$CHANGED_FILES" | grep -q "^bff_service/"; then
+        echo "##vso[task.setvariable variable=bffChanged]true"
+      fi
+      
+      if echo "$CHANGED_FILES" | grep -q "^vote_service/"; then
+        echo "##vso[task.setvariable variable=voteChanged]true"
+      fi
+      
+      if echo "$CHANGED_FILES" | grep -q "^search_service/"; then
+        echo "##vso[task.setvariable variable=searchChanged]true"
+      fi
+      
+      if echo "$CHANGED_FILES" | grep -q "^stats_service/"; then
+        echo "##vso[task.setvariable variable=statsChanged]true"
+      fi
+      
+      if echo "$CHANGED_FILES" | grep -q "^identity_service/"; then
+        echo "##vso[task.setvariable variable=identityChanged]true"
+      fi
+      
+      if echo "$CHANGED_FILES" | grep -q "^frontend_service/"; then
+        echo "##vso[task.setvariable variable=frontendChanged]true"
+      fi
+
+    displayName: Detect changed services
+
+  # -----------------------------
   # Login to Docker Hub
   # -----------------------------
   - task: Docker@2
@@ -25,6 +78,7 @@ steps:
   # Salary Submission
   - task: Docker@2
     displayName: Build & Push salary-submission-service
+    condition: eq(variables['salaryChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/salary-submission-service
@@ -37,6 +91,7 @@ steps:
   # BFF
   - task: Docker@2
     displayName: Build & Push bff-service
+    condition: eq(variables['bffChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/bff-service
@@ -49,6 +104,7 @@ steps:
   # Vote
   - task: Docker@2
     displayName: Build & Push vote-service
+    condition: eq(variables['voteChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/vote-service
@@ -61,6 +117,7 @@ steps:
   # Search
   - task: Docker@2
     displayName: Build & Push search-service
+    condition: eq(variables['searchChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/search-service
@@ -73,6 +130,7 @@ steps:
   # Stats
   - task: Docker@2
     displayName: Build & Push stats-service
+    condition: eq(variables['statsChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/stats-service
@@ -85,6 +143,7 @@ steps:
   # Identity
   - task: Docker@2
     displayName: Build & Push identity-service
+    condition: eq(variables['identityChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/identity-service
@@ -97,6 +156,7 @@ steps:
   # Frontend (with build args)
   - task: Docker@2
     displayName: Build & Push frontend-service
+    condition: eq(variables['frontendChanged'], 'true')
     inputs:
       command: buildAndPush
       repository: $(DOCKER_REGISTRY)/frontend-service
