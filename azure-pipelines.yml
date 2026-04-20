@@ -14,7 +14,10 @@ steps:
   # -----------------------------
   - script: |
       echo "Detecting changed services..."
-    
+
+      # Ensure history exists
+      git fetch origin $(Build.SourceBranchName)
+
       CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
       
       echo "Changed files:"
