@@ -27,7 +27,7 @@ public class ReportController {
 			return ResponseEntity.ok(response);
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-					new ReportResponse(e.getMessage(), 0L, false)
+					new ReportResponse(e.getMessage())
 			);
 		}
 	}

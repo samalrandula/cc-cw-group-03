@@ -8,7 +8,7 @@
 
     <!-- Include SQL files -->
     <include file="db/changelog/changes/create_tables.sql"/>
-    <include file="db/changelog/changes/add_flagged_to_salary_status_enum.sql"/>
     <include file="db/changelog/changes/add_admin_rejected_to_salary_status_enum.sql"/>
+    <include file="db/changelog/changes/demote_flagged_submissions.sql"/>
 
 </databaseChangeLog>

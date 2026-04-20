@@ -26,9 +26,6 @@ public class ReportServiceImpl implements ReportService {
 	private final ReportRepository reportRepository;
 	private final RestTemplate restTemplate;
 
-	@Value("${report.flag.threshold:3}")
-	private int reportFlagThreshold;
-
 	@Value("${salary.submission.service.url:http://localhost:8082}")
 	private String salarySubmissionServiceUrl;
 
@@ -49,16 +46,8 @@ public class ReportServiceImpl implements ReportService {
 		report.setCreatedAt(LocalDateTime.now());
 		reportRepository.save(report);
 
-		long totalReports = reportRepository.countBySalarySubmissionId(submissionId);
-		boolean shouldFlag = totalReports >= reportFlagThreshold;
-		if (shouldFlag) {
-			updateSubmissionStatus(submissionId, "FLAGGED");
-			log.info("Submission {} reached report threshold {} and was flagged for moderation", submissionId, reportFlagThreshold);
-		} else {
-			log.info("Report recorded for submission {} (reports: {}, threshold: {})", submissionId, totalReports, reportFlagThreshold);
-		}
-
-		return new ReportResponse("Report recorded successfully", totalReports, shouldFlag);
+		log.info("Report recorded for submission {} by user {}", submissionId, userId);
+		return new ReportResponse("Report recorded successfully");
 	}
 
 	@Override

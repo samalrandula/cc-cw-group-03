@@ -4,6 +4,5 @@ public enum SalaryStatus {
     PENDING,
     APPROVED,
     REJECTED,
-    FLAGGED,
     ADMIN_REJECTED
 }

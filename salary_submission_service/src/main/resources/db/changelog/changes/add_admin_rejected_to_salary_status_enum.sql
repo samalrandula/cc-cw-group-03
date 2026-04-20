@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset salary_submission_service:add-admin-rejected-salary-status
+-- changeset salary_submission_service:add-admin-rejected-salary-status splitStatements:false
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -12,4 +12,5 @@ BEGIN
     ) THEN
         ALTER TYPE salary_status_enum ADD VALUE 'ADMIN_REJECTED';
     END IF;
-END $$;
+END;
+$$;

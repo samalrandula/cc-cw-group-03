@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset salary_submission_service:add-flagged-salary-status
+-- changeset salary_submission_service:add-flagged-salary-status splitStatements:false
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -12,4 +12,5 @@ BEGIN
     ) THEN
         ALTER TYPE salary_status_enum ADD VALUE 'FLAGGED';
     END IF;
-END $$;
+END;
+$$;

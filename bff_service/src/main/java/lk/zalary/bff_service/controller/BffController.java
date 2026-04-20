@@ -134,7 +134,7 @@ public class BffController {
     }
 
     /**
-     * Report Submission - Forward to Vote Service
+     * Report submission — forward to report_service (trusted userId from JWT).
      */
     @PostMapping("/report")
     public ResponseEntity<?> report(
@@ -166,10 +166,9 @@ public class BffController {
         // ADD USER_ID TO REQUEST
         request.setUserId(userId);
 
-        // FORWARD TO VOTE SERVICE (reports endpoint)
         return forwardingService.forward(
                 request,
-                ServiceNames.VOTE_SERVICE,
+                ServiceNames.REPORT_SERVICE,
                 HttpMethod.POST,
                 "/report",
                 Object.class

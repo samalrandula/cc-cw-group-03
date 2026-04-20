@@ -8,6 +8,4 @@ import java.util.Optional;
 public interface ReportRepository extends JpaRepository<Report, Integer> {
 
 	Optional<Report> findByUserIdAndSalarySubmissionId(Integer userId, Integer salarySubmissionId);
-
-	long countBySalarySubmissionId(Integer salarySubmissionId);
 }
