@@ -85,7 +85,7 @@ public class BffController {
                 request,
                 ServiceNames.IDENTITY_SERVICE,
                 HttpMethod.POST,
-                "login",
+                "/login",
                 Object.class
         );
     }
