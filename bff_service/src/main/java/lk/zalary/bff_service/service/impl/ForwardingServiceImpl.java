@@ -33,6 +33,9 @@ public class ForwardingServiceImpl implements ForwardingService {
     @Value("${stats.service.url}")
     private String statsServiceUrl;
 
+    @Value("${report.service.url}")
+    private String reportServiceUrl;
+
     /**
      * Forward request with body (POST/PUT requests)
      */
@@ -164,6 +167,7 @@ public class ForwardingServiceImpl implements ForwardingService {
             case VOTE_SERVICE -> voteServiceUrl;
             case SEARCH_SERVICE -> searchServiceUrl;
             case STATS_SERVICE -> statsServiceUrl;
+            case REPORT_SERVICE -> reportServiceUrl;
             default -> "";
         };
     }
