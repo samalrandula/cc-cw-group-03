@@ -1,0 +1,443 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Zalary API",
+    "description": "Local ports (see variables): BFF 8090, identity 8081, salary 8082, vote 8083, search 8084, stats 8085, report 8086.\n\n**Login** (BFF or Identity): Tests script saves token to collection variable accessToken.\n\n**Salary status** (salary_submissions.status): PENDING, APPROVED, REJECTED, ADMIN_REJECTED. No FLAGGED status; reports live in the reports table. ADMIN_REJECTED is final (salary service ignores PUTs to other statuses). Vote responses use submissionStatus from the persisted row after each vote.\n\n**BFF POST /report** forwards to report_service; body submissionId + reason; JWT supplies userId. Report success JSON is a single message field only (no report counts).\n\n**Vote** (BFF or vote_service): response includes submissionStatus matching the database (e.g. stays ADMIN_REJECTED when vote totals would otherwise imply PENDING).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "bffBase", "value": "http://localhost:8090" },
+    { "key": "identityBase", "value": "http://localhost:8081" },
+    { "key": "salaryBase", "value": "http://localhost:8082" },
+    { "key": "voteBase", "value": "http://localhost:8083" },
+    { "key": "searchBase", "value": "http://localhost:8084" },
+    { "key": "statsBase", "value": "http://localhost:8085" },
+    { "key": "reportBase", "value": "http://localhost:8086" },
+    { "key": "accessToken", "value": "" },
+    { "key": "submissionId", "value": "1" },
+    { "key": "userId", "value": "1" },
+    { "key": "salaryId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "BFF",
+      "item": [
+        {
+          "name": "Health test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffBase}}/test"
+          }
+        },
+        {
+          "name": "Submit salary",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company\": \"Acme Corp\",\n  \"country\": \"LK\",\n  \"role\": \"Software Engineer\",\n  \"salary\": 150000,\n  \"yearsOfExperience\": 3,\n  \"experienceLevel\": \"MID\",\n  \"currency\": \"LKR\",\n  \"anonymize\": false\n}"
+            },
+            "url": "{{bffBase}}/submit"
+          }
+        },
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{bffBase}}/signup"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  var j = pm.response.json();",
+                  "  if (j && j.token) pm.collectionVariables.set('accessToken', j.token);",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{bffBase}}/login"
+          }
+        },
+        {
+          "name": "Vote",
+          "description": "Response JSON includes `submissionStatus` (actual DB status after vote). If the submission is `ADMIN_REJECTED`, that value is returned even when vote totals would otherwise imply PENDING/APPROVED/REJECTED.",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"submissionId\": 1,\n  \"voteType\": \"UPVOTE\"\n}"
+            },
+            "url": "{{bffBase}}/vote"
+          }
+        },
+        {
+          "name": "Report submission",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"submissionId\": 1,\n  \"reason\": \"Inaccurate data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{bffBase}}/report",
+            "description": "POST to BFF → report_service. Body: `submissionId`, `reason` only; BFF adds `userId` from JWT (run Login first). Success response from report_service is `{ \"message\": \"...\" }` only."
+          }
+        },
+        {
+          "name": "Search salaries (query → BFF)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bffBase}}/search?page=0&pageSize=20",
+              "host": ["{{bffBase}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "countries", "value": "LK", "disabled": true },
+                { "key": "companies", "value": "Acme Corp", "disabled": true },
+                { "key": "roles", "value": "Software Engineer", "disabled": true },
+                { "key": "levels", "value": "MID", "disabled": true },
+                { "key": "minSalary", "value": "100000", "disabled": true },
+                { "key": "maxSalary", "value": "500000", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bffBase}}/stats",
+              "host": ["{{bffBase}}"],
+              "path": ["stats"],
+              "query": [
+                { "key": "location", "value": "Colombo", "disabled": true },
+                { "key": "role", "value": "Software Engineer", "disabled": true },
+                { "key": "experienceLevel", "value": "MID", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Identity service",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"secret12\"\n}"
+            },
+            "url": "{{identityBase}}/signup"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  var j = pm.response.json();",
+                  "  if (j && j.token) pm.collectionVariables.set('accessToken', j.token);",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"secret12\"\n}"
+            },
+            "url": "{{identityBase}}/login"
+          }
+        },
+        {
+          "name": "Validate token",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{identityBase}}/validate-token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Salary submission service",
+      "item": [
+        {
+          "name": "Health test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{salaryBase}}/test"
+          }
+        },
+        {
+          "name": "Submit salary",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company\": \"Acme Corp\",\n  \"country\": \"LK\",\n  \"role\": \"Software Engineer\",\n  \"salary\": 150000,\n  \"yearsOfExperience\": 3,\n  \"experienceLevel\": \"MID\",\n  \"currency\": \"LKR\",\n  \"anonymize\": false\n}"
+            },
+            "url": "{{salaryBase}}/submit"
+          }
+        },
+        {
+          "name": "Get submission by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{salaryBase}}/api/submissions/{{submissionId}}"
+          }
+        },
+        {
+          "name": "Update submission status",
+          "description": "Query `status`: `PENDING`, `APPROVED`, `REJECTED`, or `ADMIN_REJECTED`. `ADMIN_REJECTED` is final — PUTs to any other status are ignored (no row change). There is no `FLAGGED`.",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{salaryBase}}/api/submissions/{{submissionId}}/status?status=APPROVED",
+              "host": ["{{salaryBase}}"],
+              "path": ["api", "submissions", "{{submissionId}}", "status"],
+              "query": [{ "key": "status", "value": "APPROVED" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vote service",
+      "item": [
+        {
+          "name": "Health test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{voteBase}}/test"
+          }
+        },
+        {
+          "name": "Submit vote (trusted body with userId)",
+          "description": "Same vote logic as BFF path. `submissionStatus` in the response is the persisted salary submission status (e.g. stays `ADMIN_REJECTED` when the salary service rejects vote-driven updates).",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"submissionId\": 1,\n  \"voteType\": \"UPVOTE\"\n}"
+            },
+            "url": "{{voteBase}}/vote"
+          }
+        },
+        {
+          "name": "Vote count for submission",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{voteBase}}/vote/submission/{{submissionId}}"
+          }
+        },
+        {
+          "name": "User vote status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{voteBase}}/vote/submission/{{submissionId}}/user/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Report service",
+      "item": [
+        {
+          "name": "Health test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{reportBase}}/test"
+          }
+        },
+        {
+          "name": "Submit report (trusted body — same shape BFF sends after JWT)",
+          "description": "Stores a report row; does not change salary `status` or return report counts. **200** body: `{ \"message\": \"Report recorded successfully\" }` (or `{ \"message\": \"...\" }` on validation errors from the controller).",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"submissionId\": 1,\n  \"reason\": \"Inaccurate data\"\n}"
+            },
+            "url": "{{reportBase}}/report"
+          }
+        },
+        {
+          "name": "Admin reject submission (trusted — protect in gateway/BFF in production)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"submissionId\": 1\n}"
+            },
+            "url": "{{reportBase}}/admin/reject-submission"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search service",
+      "item": [
+        {
+          "name": "Health test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/test"
+          }
+        },
+        {
+          "name": "Search salaries (POST body)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countries\": [\"LK\"],\n  \"companies\": [],\n  \"roles\": [],\n  \"experienceLevels\": [\"MID\"],\n  \"salaryMin\": null,\n  \"salaryMax\": null,\n  \"page\": 0,\n  \"pageSize\": 20\n}"
+            },
+            "url": "{{searchBase}}/api/v1/salaries/search"
+          }
+        },
+        {
+          "name": "Get salary by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/api/v1/salaries/{{salaryId}}"
+          }
+        },
+        {
+          "name": "Filter countries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/api/v1/salaries/filters/countries"
+          }
+        },
+        {
+          "name": "Filter companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/api/v1/salaries/filters/companies"
+          }
+        },
+        {
+          "name": "Filter roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/api/v1/salaries/filters/roles"
+          }
+        },
+        {
+          "name": "Filter experience levels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/api/v1/salaries/filters/experience-levels"
+          }
+        },
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{searchBase}}/api/v1/salaries/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stats service",
+      "item": [
+        {
+          "name": "Health test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{statsBase}}/test"
+          }
+        },
+        {
+          "name": "Get stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{statsBase}}/api/stats",
+              "host": ["{{statsBase}}"],
+              "path": ["api", "stats"],
+              "query": [
+                { "key": "location", "value": "Colombo", "disabled": true },
+                { "key": "role", "value": "Software Engineer", "disabled": true },
+                { "key": "experienceLevel", "value": "MID", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

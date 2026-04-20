@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-service
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bff-service
+  template:
+    metadata:
+      labels:
+        app: bff-service
+    spec:
+      containers:
+        - name: bff-service
+          image: samalrandula/bff-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: bff-config
+            
