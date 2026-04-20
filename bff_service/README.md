@@ -171,8 +171,7 @@ Base URL: `http://localhost:8083`
 ```json
 {
   "submissionId": 456,
-  "voteType": "UPVOTE",
-  "userId": 123
+  "voteType": "UPVOTE"
 }
 ```
 
@@ -182,7 +181,6 @@ Base URL: `http://localhost:8083`
 | ------------ |-------------------|
 | submissionId | required          |
 | voteType     | UPVOTE / DOWNVOTE |
-| userId       | required          |
 
 ### Response
 
@@ -206,8 +204,7 @@ Base URL: `http://localhost:8083`
 {
   "submissionId": 456,
   "reason": "fake",
-  "comment": "This salary seems unrealistic",
-  "userId": 123
+  "comment": "This salary seems unrealistic"
 }
 ```
 
@@ -257,7 +254,9 @@ Base URL: `http://localhost:8084`
       "location": "Colombo",
       "yearsOfExperience": 3,
       "status": "APPROVED",
-      "anonymize": false
+      "anonymize": false,
+      "upvotes": 3,
+      "downvotes": 2       
     }
   ],
   "count": 1
