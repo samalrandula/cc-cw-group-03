@@ -29,6 +29,7 @@ services:
       SEARCH_SERVICE_URL: ${SEARCH_SERVICE_URL}
       STATS_SERVICE_URL: ${STATS_SERVICE_URL}
       IDENTITY_SERVICE_URL: ${IDENTITY_SERVICE_URL}
+      REPORT_SERVICE_URL: ${REPORT_SERVICE_URL}
 
   vote-service:
     image: ${DOCKER_REPO}/vote-service:latest
@@ -67,6 +68,16 @@ services:
       - "8086:8086"
     environment:
       <<: *db-env
+
+  report-service:
+    image: ${DOCKER_REPO}/report-service:latest
+    platform: linux/amd64
+    container_name: report-service
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *db-env
+      SALARY_SUBMISSION_SERVICE_URL: ${SALARY_SUBMISSION_SERVICE_URL}
 
   frontend-service:
     image: ${DOCKER_REPO}/frontend-service:latest

@@ -33,6 +33,7 @@ steps:
       echo "##vso[task.setvariable variable=searchChanged]false"
       echo "##vso[task.setvariable variable=statsChanged]false"
       echo "##vso[task.setvariable variable=identityChanged]false"
+      echo "##vso[task.setvariable variable=reportChanged]false"
       echo "##vso[task.setvariable variable=frontendChanged]false"
       
       # Detect changes
@@ -60,9 +61,14 @@ steps:
         echo "##vso[task.setvariable variable=identityChanged]true"
       fi
       
+      if echo "$CHANGED_FILES" | grep -q "^report_service/"; then
+        echo "##vso[task.setvariable variable=reportChanged]true"
+      fi
+      
       if echo "$CHANGED_FILES" | grep -q "^frontend_service/"; then
         echo "##vso[task.setvariable variable=frontendChanged]true"
       fi
+    
 
     displayName: Detect changed services
 
@@ -156,6 +162,19 @@ steps:
       tags: |
         latest
         $(Build.BuildId)
+
+  # Report
+  - task: Docker@2
+    displayName: Build & Push report-service
+    condition: eq(variables['reportChanged'], 'true')
+    inputs:
+      command: buildAndPush
+      repository: $(DOCKER_REGISTRY)/report-service
+      dockerfile: report_service/dockerfile
+      buildContext: report_service
+      tags: |
+        latest
+        $(Build.BuildId)        
 
   # Frontend (with build args)
   - task: Docker@2
