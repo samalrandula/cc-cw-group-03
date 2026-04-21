@@ -9,11 +9,13 @@ import lombok.Data;
  */
 @Data
 public class VoteRequest {
-    private Integer userId;
-    
+
+    @NotNull(message = "User ID is required")
+    private Long userId;
+
     @NotNull(message = "Salary submission ID is required")
-    private Integer salarySubmissionId;
-    
+    private Long salarySubmissionId;
+
     @NotNull(message = "Vote type is required")
     private VoteType voteType;
 }

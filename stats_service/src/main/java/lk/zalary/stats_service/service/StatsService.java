@@ -17,9 +17,11 @@ import java.util.stream.Collectors;
 public class StatsService {
 
     private final SalaryRepository salaryRepository;
+    private final CurrencyService currencyService;
 
-    public StatsService(SalaryRepository salaryRepository) {
+    public StatsService(SalaryRepository salaryRepository, CurrencyService currencyService) {
         this.salaryRepository = salaryRepository;
+        this.currencyService = currencyService;
     }
 
     public StatsResponse getStats(String location, String role, ExperienceLevel experienceLevel) {
@@ -98,7 +100,7 @@ public class StatsService {
         }
 
         List<BigDecimal> sortedSalaries = salaries.stream()
-                .map(SalarySubmission::getSalary)
+                .map(s -> currencyService.convertToUSD(s.getSalary(), s.getCurrency()))
                 .sorted()
                 .toList();
 
@@ -124,7 +126,7 @@ public class StatsService {
                         s -> s.getExperienceLevel().name(),
                         Collectors.collectingAndThen(Collectors.toList(), list -> {
                             double avg = list.stream()
-                                    .map(SalarySubmission::getSalary)
+                                    .map(s -> currencyService.convertToUSD(s.getSalary(), s.getCurrency()))
                                     .reduce(BigDecimal.ZERO, BigDecimal::add)
                                     .divide(BigDecimal.valueOf(list.size()), 2, RoundingMode.HALF_UP)
                                     .doubleValue();

@@ -59,6 +59,11 @@ public class SalaryServiceImpl implements SalaryService {
         SalarySubmissions submission = salaryRepository.findById(salarySubmissionId.longValue())
                 .orElseThrow(() -> new IllegalArgumentException("Salary submission not found with id: " + salarySubmissionId));
 
+        if (submission.getStatus() == SalaryStatus.ADMIN_REJECTED && status != SalaryStatus.ADMIN_REJECTED) {
+            log.warn("Ignoring status change for submission {} to {} — ADMIN_REJECTED is final", salarySubmissionId, status);
+            return;
+        }
+
         submission.setStatus(status);
         salaryRepository.save(submission);
 

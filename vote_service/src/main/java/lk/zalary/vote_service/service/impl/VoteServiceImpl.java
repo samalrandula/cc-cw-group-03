@@ -1,5 +1,6 @@
 package lk.zalary.vote_service.service.impl;
 
+import lk.zalary.vote_service.dto.SalarySubmissionStatus;
 import lk.zalary.vote_service.dto.UserVoteStatusResponse;
 import lk.zalary.vote_service.dto.VoteCountResponse;
 import lk.zalary.vote_service.dto.VoteRequest;
@@ -83,6 +84,10 @@ public class VoteServiceImpl implements VoteService {
         Long downvoteCount = voteRepository.countBySalarySubmissionIdAndVoteType(submissionId, VoteType.DOWNVOTE);
 
         String status = determineAndUpdateStatus(submissionId, upvoteCount, downvoteCount);
+        String authoritativeStatus = fetchSubmissionStatus(submissionId);
+        if (authoritativeStatus != null) {
+            status = authoritativeStatus;
+        }
 
         String userVoteStatus = voteRepository
                 .findByUserIdAndSalarySubmissionId(userId, submissionId)
@@ -147,6 +152,20 @@ public class VoteServiceImpl implements VoteService {
             log.info("Updated submission {} to status {}", salarySubmissionId, status);
         } catch (Exception e) {
             log.error("Failed to update submission status", e);
+        }
+    }
+
+    /**
+     * Current persisted submission status (e.g. ADMIN_REJECTED when salary service ignored a vote-driven update).
+     */
+    private String fetchSubmissionStatus(int submissionId) {
+        try {
+            String url = salarySubmissionServiceUrl + "/api/submissions/" + submissionId;
+            SalarySubmissionStatus body = restTemplate.getForObject(url, SalarySubmissionStatus.class);
+            return body != null && body.getStatus() != null ? body.getStatus() : null;
+        } catch (Exception e) {
+            log.debug("Could not fetch submission {} status: {}", submissionId, e.getMessage());
+            return null;
         }
     }
 }

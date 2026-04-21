@@ -5,5 +5,6 @@ public enum ServiceNames {
     IDENTITY_SERVICE,
     SEARCH_SERVICE,
     STATS_SERVICE,
-    VOTE_SERVICE
+    VOTE_SERVICE,
+    REPORT_SERVICE
 }

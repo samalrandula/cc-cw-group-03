@@ -40,6 +40,8 @@ Manages votes for salary submissions. Acts as a toggle:
 
 All success bodies include **`userVoteStatus`**: the caller’s state **after** the operation — `UPVOTE`, `DOWNVOTE`, or **`NONE`** (no vote on that submission).
 
+**`submissionStatus`** is the salary submission’s **persisted** status **after** the vote is applied (read from the salary submission service). It therefore matches the database: for example, if the submission is **`ADMIN_REJECTED`**, the response still returns **`ADMIN_REJECTED`** even when vote totals would otherwise imply **`PENDING`**, **`APPROVED`**, or **`REJECTED`**. Valid values are typically **`PENDING`**, **`APPROVED`**, **`REJECTED`**, and **`ADMIN_REJECTED`** (no **`FLAGGED`** in the current model).
+
 Vote recorded:
 
 ```json
