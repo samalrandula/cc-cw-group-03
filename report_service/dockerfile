@@ -12,6 +12,7 @@ COPY settings.gradle .
 COPY . .
 
 # Build the jar (skip tests for faster builds)
+RUN chmod +x gradlew
 RUN ./gradlew clean build -x test
 
 # Use lightweight Java runtime
