@@ -36,9 +36,7 @@ echo "Adding user to Docker group..."
 sudo usermod -aG docker $USER
 
 echo "Applying group changes..."
-newgrp docker <<EONG
-echo "Docker group applied"
-EONG
+newgrp docker
 
 echo "Configure Azure DevOps Agent..."
 ./config.sh
