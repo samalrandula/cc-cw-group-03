@@ -9,3 +9,4 @@ data:
   SEARCH_SERVICE_URL: "http://search-service:8084"
   STATS_SERVICE_URL: "http://stats-service:8085"
   IDENTITY_SERVICE_URL: "http://identity-service:8086"
+  REPORT_SERVICE_URL: "http://report-service:8087"

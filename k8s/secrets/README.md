@@ -4,7 +4,7 @@ This directory contains Kubernetes Secrets for storing sensitive configuration.
 
 ## Files
 
-1. `jwt-secret.yaml` - JWT signing secret for identity service
+1. `app-secret.yaml` - JWT signing secret for identity service
 
 ## Purpose
 
@@ -24,6 +24,6 @@ Secrets store sensitive data in base64 encoding (NOT encryption):
 
 ## JWT Secret
 
-**File**: `jwt-secret.yaml`
+**File**: `app-secret.yaml`
 
 ```yaml
