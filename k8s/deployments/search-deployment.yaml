@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-service
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: search-service
+  template:
+    metadata:
+      labels:
+        app: search-service
+    spec:
+      containers:
+        - name: search-service
+          image: samalrandula/search-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: service-config
+            

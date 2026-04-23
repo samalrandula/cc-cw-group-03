@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salary-submission-service
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: salary-submission-service
+  template:
+    metadata:
+      labels:
+        app: salary-submission-service
+    spec:
+      containers:
+        - name: salary-submission-service
+          image: samalrandula/salary-submission-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: service-config
+            

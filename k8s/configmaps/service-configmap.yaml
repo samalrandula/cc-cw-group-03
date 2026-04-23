@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-config
+  namespace: app
+data:
+  JWT_EXPIRATION: 3600000
+#
+#  update these with the PGSQL
+#
+#  DB_URL: jdbc:postgresql://host.docker.internal:5432/postgres?currentSchema=zalary
+#  DB_NAME: zalary
+#  DB_USERNAME: postgres
+#  DB_PASSWORD:

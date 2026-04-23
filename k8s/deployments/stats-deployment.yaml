@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stats-service
+  template:
+    metadata:
+      labels:
+        app: stats-service
+    spec:
+      containers:
+        - name: stats-service
+          image: samalrandula/stats-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: service-config
+            
