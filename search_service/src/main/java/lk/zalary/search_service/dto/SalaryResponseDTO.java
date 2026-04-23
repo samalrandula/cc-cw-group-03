@@ -30,6 +30,11 @@ public class SalaryResponseDTO {
 
     private LocalDateTime submittedAt;
 
+    @Builder.Default
+    private Long upvoteCount = 0L;
+    @Builder.Default
+    private Long downvoteCount = 0L;
+
     public static SalaryResponseDTO fromEntity(Salary salary) {
         return SalaryResponseDTO.builder()
                 .id(salary.getId())
