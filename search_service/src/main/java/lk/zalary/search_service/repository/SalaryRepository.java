@@ -9,11 +9,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import lk.zalary.search_service.dto.VoteCountProjection;
+
 import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
 public interface SalaryRepository extends JpaRepository<Salary, Integer> {
+
+    @Query(value = "SELECT v.salary_submission_id as salaryId, " +
+            "COALESCE(SUM(CASE WHEN v.vote_type = 'UPVOTE' THEN 1 ELSE 0 END), 0) as upvoteCount, " +
+            "COALESCE(SUM(CASE WHEN v.vote_type = 'DOWNVOTE' THEN 1 ELSE 0 END), 0) as downvoteCount " +
+            "FROM votes v WHERE v.salary_submission_id IN (:salaryIds) " +
+            "GROUP BY v.salary_submission_id", nativeQuery = true)
+    List<VoteCountProjection> findVoteCountsBySalaryIds(@Param("salaryIds") List<Integer> salaryIds);
+
+    @Query(value = "SELECT v.salary_submission_id as salaryId, " +
+            "COALESCE(SUM(CASE WHEN v.vote_type = 'UPVOTE' THEN 1 ELSE 0 END), 0) as upvoteCount, " +
+            "COALESCE(SUM(CASE WHEN v.vote_type = 'DOWNVOTE' THEN 1 ELSE 0 END), 0) as downvoteCount " +
+            "FROM votes v WHERE v.salary_submission_id = :salaryId " +
+            "GROUP BY v.salary_submission_id", nativeQuery = true)
+    VoteCountProjection findVoteCountBySalaryId(@Param("salaryId") Integer salaryId);
 
     @Query("SELECT s FROM Salary s WHERE " +
             "CASE WHEN :countries IS NULL THEN true ELSE s.country IN :countries END AND " +
