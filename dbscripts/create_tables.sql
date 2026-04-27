@@ -1,10 +1,12 @@
 CREATE TYPE salary_status_enum AS ENUM (
     'PENDING',
     'APPROVED',
-    'REJECTED'
+    'REJECTED',
+    'ADMIN_REJECTED'
 );
 
 CREATE TYPE experience_level_enum AS ENUM (
+    'INTERN',
     'JUNIOR',
     'MID',
     'SENIOR',

@@ -5,10 +5,7 @@ metadata:
   namespace: app
 data:
   JWT_EXPIRATION: 3600000
-#
-#  update these with the PGSQL
-#
-#  DB_URL: jdbc:postgresql://host.docker.internal:5432/postgres?currentSchema=zalary
-#  DB_NAME: zalary
-#  DB_USERNAME: postgres
-#  DB_PASSWORD:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-service.data.svc.cluster.local:5432/zalary
+  SPRING_DATASOURCE_USERNAME: postgres
+  DB_NAME: zalary
+  SPRING_DATASOURCE_PASSWORD: postgres
