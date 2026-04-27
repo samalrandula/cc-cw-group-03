@@ -1,0 +1,15 @@
+trigger:
+  branches:
+    include:
+      - SCRUM-27-aks-cluster-setup
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+
+  - script: |
+      echo "CI pipeline started successfully"
+      echo "Repo structure:"
+      ls -R
+    displayName: "Verify repo is loaded"
