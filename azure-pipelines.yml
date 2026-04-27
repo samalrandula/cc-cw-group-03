@@ -188,3 +188,63 @@ steps:
       tags: |
         latest
         $(Build.BuildId)
+
+# =============================
+# Deploy Stage (Appended)
+# =============================
+stages:
+  - stage: Deploy
+    displayName: Deploy to Kubernetes
+    dependsOn: []
+    condition: succeeded()
+
+    jobs:
+      - job: DeployToK8s
+        displayName: Deploy
+        steps:
+
+          - checkout: self
+
+          - task: DownloadSecureFile@1
+            name: kubeconfig
+            displayName: Download kubeconfig
+            inputs:
+              secureFile: kubeconfig.yaml
+
+          - script: |
+              mkdir -p ~/.kube
+              cp $(kubeconfig.secureFilePath) ~/.kube/config
+              chmod 600 ~/.kube/config
+              
+              kubectl get nodes
+            displayName: Configure kubectl
+
+          - script: |
+              kubectl apply -f k8s/services/bff-service.yaml
+              kubectl apply -f k8s/services/frontend-service.yaml
+            displayName: Apply Services
+
+          - script: |
+              kubectl apply -f k8s/deployments/bff-deployment.yaml
+              kubectl apply -f k8s/deployments/frontend-deployment.yaml
+            displayName: Apply Deployments
+
+          - script: |
+              if [ "$(bffChanged)" = "true" ]; then
+                kubectl rollout restart deployment/bff-service
+              fi
+              
+              if [ "$(frontendChanged)" = "true" ]; then
+                kubectl rollout restart deployment/frontend-service
+              fi
+            displayName: Restart Changed Deployments
+
+          - script: |
+              kubectl rollout status deployment/bff-service --timeout=180s
+              kubectl rollout status deployment/frontend-service --timeout=180s
+            displayName: Wait for Rollout
+
+          - script: |
+              kubectl get pods
+              kubectl get svc
+            displayName: Verify Deployment
