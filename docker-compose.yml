@@ -8,17 +8,16 @@ x-db-env: &db-env
 services:
 
   salary-submission-service:
-    image: ${DOCKER_REPO}/salary-submission-service:latest
-    platform: linux/amd64
+    build: ./salary_submission_service
     container_name: salary-submission-service
     ports:
       - "8081:8081"
     environment:
       <<: *db-env
 
+
   bff-service:
-    image: ${DOCKER_REPO}/bff-service:latest
-    platform: linux/amd64
+    build: ./bff_service
     container_name: bff-service
     ports:
       - "8082:8082"
@@ -32,8 +31,7 @@ services:
       REPORT_SERVICE_URL: ${REPORT_SERVICE_URL}
 
   vote-service:
-    image: ${DOCKER_REPO}/vote-service:latest
-    platform: linux/amd64
+    build: ./vote_service
     container_name: vote-service
     ports:
       - "8083:8083"
@@ -43,8 +41,7 @@ services:
       IDENTITY_SERVICE_URL: ${IDENTITY_SERVICE_URL}
 
   search-service:
-    image: ${DOCKER_REPO}/search-service:latest
-    platform: linux/amd64
+    build: ./search_service
     container_name: search-service
     ports:
       - "8084:8084"
@@ -52,8 +49,7 @@ services:
       <<: *db-env
 
   stats-service:
-    image: ${DOCKER_REPO}/stats-service:latest
-    platform: linux/amd64
+    build: ./stats_service
     container_name: stats-service
     ports:
       - "8085:8085"
@@ -61,27 +57,23 @@ services:
       <<: *db-env
 
   identity-service:
-    image: ${DOCKER_REPO}/identity-service:latest
-    platform: linux/amd64
+    build: ./identity_service
     container_name: identity-service
     ports:
       - "8086:8086"
     environment:
       <<: *db-env
-
-  report-service:
-    image: ${DOCKER_REPO}/report-service:latest
-    platform: linux/amd64
-    container_name: report-service
-    ports:
-      - "8087:8087"
-    environment:
-      <<: *db-env
-      SALARY_SUBMISSION_SERVICE_URL: ${SALARY_SUBMISSION_SERVICE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
 
   frontend-service:
-    image: ${DOCKER_REPO}/frontend-service:latest
-    platform: linux/amd64
+    build:
+      context: ./frontend_service
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        EXCHANGE_API: ${EXCHANGE_API}
+        COUNTRIES_API: ${COUNTRIES_API}
+        JOB_ROLES_API: ${JOB_ROLES_API}
     container_name: frontend-service
     ports:
       - "3000:80"

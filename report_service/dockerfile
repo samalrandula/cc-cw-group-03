@@ -11,9 +11,9 @@ COPY build.gradle .
 COPY settings.gradle .
 COPY . .
 
-# Build the jar (skip tests for faster builds)
+# Build the jar
 RUN chmod +x gradlew
-RUN ./gradlew clean build -x test
+RUN ./gradlew clean build
 
 # Use lightweight Java runtime
 FROM eclipse-temurin:21-jre-alpine

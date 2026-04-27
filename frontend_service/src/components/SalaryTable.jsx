@@ -399,7 +399,7 @@ const RoleTagAutocomplete = ({ icon, tags, onChange }) => {
 /* ── Skeleton row ── */
 const SkeletonRow = () => (
   <tr>
-    {[200, 160, 130, 80, 110, 90, 60].map((w, i) => (
+    {[200, 160, 130, 80, 110, 90, 80, 60].map((w, i) => (
       <td key={i} style={S.td}>
         <div style={{ height: 14, width: w, borderRadius: 6, background: "rgba(255,255,255,0.06)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
       </td>
@@ -431,7 +431,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, loading }) => {
 };
 
 /* ── Vote Success Animation ── */
-const VoteSuccessOverlay = ({ voteType }) => {
+const VoteSuccessOverlay = ({ voteType, isRemoval }) => {
   const isUp = voteType === "UPVOTE";
   return (
     <div style={{
@@ -487,7 +487,7 @@ const VoteSuccessOverlay = ({ voteType }) => {
       </div>
 
       <div style={{ marginTop: 20, fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: isUp ? "#34d399" : "#f87171", animation: "voteText 0.35s ease-out 0.15s both" }}>
-        {isUp ? "Upvoted successfully!" : "Downvoted successfully!"}
+        {isRemoval ? "Vote removed!" : isUp ? "Upvoted successfully!" : "Downvoted successfully!"}
       </div>
       <div style={{ marginTop: 6, fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", animation: "voteText 0.35s ease-out 0.25s both" }}>
         Thanks for keeping the data honest
@@ -497,8 +497,9 @@ const VoteSuccessOverlay = ({ voteType }) => {
 };
 
 /* ── Vote Modal ── */
-const VoteModal = ({ open, onClose, salary }) => {
+const VoteModal = ({ open, onClose, salary, onVoteSuccess }) => {
   const [vote, setVote]             = useState("UPVOTE");
+  const [initialVoteStatus, setInitialVoteStatus] = useState("NONE"); // what the API returned
   const [submitting, setSubmitting] = useState(false);
   const [voteError, setVoteError]   = useState(null);
   // votePhase: "loading" | "idle" | "success"
@@ -529,10 +530,12 @@ const VoteModal = ({ open, onClose, salary }) => {
 
     fetchVoteStatus(salary.id)
       .then((data) => {
-        setVote(data?.userVoteStatus === "DOWNVOTE" ? "DOWNVOTE" : "UPVOTE");
+        const status = data?.userVoteStatus ?? "NONE";
+        setInitialVoteStatus(status);
+        setVote(status === "DOWNVOTE" ? "DOWNVOTE" : "UPVOTE");
         setVotePhase("idle");
       })
-      .catch(() => { setVote("UPVOTE"); setVotePhase("idle"); });
+      .catch(() => { setInitialVoteStatus("NONE"); setVote("UPVOTE"); setVotePhase("idle"); });
   }, [open, salary?.id]);
 
   // Animate the report panel open / close by driving max-height + opacity
@@ -579,7 +582,7 @@ const VoteModal = ({ open, onClose, salary }) => {
       await submitVote({ salarySubmissionId: salary.id, voteType: vote });
       setSuccessVote(vote);
       setVotePhase("success");
-      setTimeout(() => onClose(), 2000);
+      setTimeout(() => { onVoteSuccess?.(); onClose(); }, 2000);
     } catch (err) {
       setVoteError(err?.response?.data?.message || "Failed to submit vote. Please try again.");
     } finally {
@@ -625,7 +628,7 @@ const VoteModal = ({ open, onClose, salary }) => {
       `}</style>
 
       {/* ── Vote success overlay ── */}
-      {votePhase === "success" && <VoteSuccessOverlay voteType={successVote} />}
+      {votePhase === "success" && <VoteSuccessOverlay voteType={successVote} isRemoval={successVote === initialVoteStatus} />}
 
       {/* ── Header ── */}
       <DialogTitle style={{ padding: "24px 28px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 18 }}>
@@ -701,7 +704,7 @@ const VoteModal = ({ open, onClose, salary }) => {
                     </svg>
                     Submitting…
                   </>
-                ) : "Submit Vote"}
+                ) : vote === initialVoteStatus ? "Remove Vote" : "Submit Vote"}
               </button>
             </div>
 
@@ -875,7 +878,8 @@ function SalaryTable({ isLoggedIn }) {
 
   // API state
   const [salaries, setSalaries]         = useState([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading]           = useState(true);   // initial / filter load → full skeleton
+  const [reloading, setReloading]       = useState(false);  // background reload → overlay spinner
   const [error, setError]               = useState(null);
   const [currentPage, setCurrentPage]   = useState(0);
   const [totalPages, setTotalPages]     = useState(0);
@@ -901,8 +905,12 @@ function SalaryTable({ isLoggedIn }) {
   }, []);
 
   const loadSalaries = useCallback(
-    async (page) => {
-      setLoading(true);
+    async (page, { background = false } = {}) => {
+      if (background) {
+        setReloading(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         const params = { page, pageSize: 10 };
@@ -924,6 +932,7 @@ function SalaryTable({ isLoggedIn }) {
         setSalaries([]);
       } finally {
         setLoading(false);
+        setReloading(false);
       }
     },
     [selectedCountries, selectedCompanies, selectedRoles, selectedLevels]
@@ -940,7 +949,7 @@ function SalaryTable({ isLoggedIn }) {
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    loadSalaries(newPage);
+    loadSalaries(newPage, { background: true });
   };
 
   const handleOpenVote = (s) => {
@@ -953,7 +962,7 @@ function SalaryTable({ isLoggedIn }) {
 
   const handleSubmissionClose = () => {
     setOpenSubmission(false);
-    loadSalaries(0);
+    loadSalaries(0, { background: true });
   };
 
   const isFiltering = selectedCountries.length > 0 || selectedCompanies.length > 0 || selectedRoles.length > 0 || selectedLevels.length > 0;
@@ -970,6 +979,7 @@ function SalaryTable({ isLoggedIn }) {
             <div style={S.tableTitle}>Latest Submissions</div>
             <div style={S.tableSubtitle}>
               {loading ? "Loading…"
+                : reloading ? totalCount + " entries · updating…"
                 : error ? "Error loading data"
                 : isFiltering ? totalCount + " result" + (totalCount !== 1 ? "s" : "") + " found"
                 : totalCount + " entries · page " + (currentPage + 1) + " of " + totalPages}
@@ -1048,11 +1058,38 @@ function SalaryTable({ isLoggedIn }) {
         </div>
 
         {/* Table */}
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", position: "relative" }}>
+
+          {/* ── Background reload overlay ── */}
+          {reloading && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 10,
+              background: "rgba(8,11,18,0.55)",
+              backdropFilter: "blur(2px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 4,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 18px", borderRadius: 12,
+                background: "rgba(13,17,23,0.92)",
+                border: "1px solid rgba(99,102,241,0.25)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" strokeWidth="2.5" strokeLinecap="round"
+                  style={{ animation: "filterSpin 0.75s linear infinite", flexShrink: 0 }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(232,234,240,0.7)", fontFamily: "'DM Sans', sans-serif" }}>
+                  Updating…
+                </span>
+              </div>
+            </div>
+          )}
           <table style={S.table}>
             <thead>
               <tr>
-                {["Company", "Role", "Country", "Level", "Salary", "Date", ""].map((h) => (
+                {["Company", "Role", "Country", "Level", "Salary", "Date", "Votes", ""].map((h) => (
                   <th key={h} style={S.th}>{h}</th>
                 ))}
               </tr>
@@ -1065,7 +1102,7 @@ function SalaryTable({ isLoggedIn }) {
               {/* Error */}
               {!loading && error && (
                 <tr>
-                  <td colSpan={7} style={{ padding: "52px 24px", textAlign: "center" }}>
+                  <td colSpan={8} style={{ padding: "52px 24px", textAlign: "center" }}>
                     <div style={{ fontSize: 28, marginBottom: 10 }}>⚠️</div>
                     <div style={{ color: "#f87171", fontSize: 14, marginBottom: 12 }}>{error}</div>
                     <button onClick={() => loadSalaries(currentPage)}
@@ -1079,7 +1116,7 @@ function SalaryTable({ isLoggedIn }) {
               {/* Empty */}
               {!loading && !error && salaries.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: "52px 24px", textAlign: "center", color: "rgba(232,234,240,0.3)", fontSize: 14 }}>
+                  <td colSpan={8} style={{ padding: "52px 24px", textAlign: "center", color: "rgba(232,234,240,0.3)", fontSize: 14 }}>
                     <div style={{ fontSize: 30, marginBottom: 10 }}>🔍</div>
                     {isFiltering
                       ? "No results found. Try a different filter."
@@ -1120,6 +1157,28 @@ function SalaryTable({ isLoggedIn }) {
                   <td style={{ ...S.td, fontSize: 12, color: "rgba(232,234,240,0.35)", whiteSpace: "nowrap" }}>
                     {formatDate(row.submittedAt)}
                   </td>
+                  {/* ── Vote counts ── */}
+                  <td style={{ ...S.td, whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {/* Upvote pill */}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 99, background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.18)", color: "#34d399", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+                          <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                        </svg>
+                        {row.upvoteCount ?? 0}
+                      </span>
+                      {/* Downvote pill */}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", color: "#f87171", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
+                          <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+                        </svg>
+                        {row.downvoteCount ?? 0}
+                      </span>
+                    </div>
+                  </td>
+                  {/* ── Vote action button ── */}
                   <td style={{ ...S.td, textAlign: "right" }}>
                     <button onClick={() => handleOpenVote(row)} disabled={!isLoggedIn}
                       style={{ padding: "7px 14px", borderRadius: 8, cursor: isLoggedIn ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, background: isLoggedIn ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.04)", color: isLoggedIn ? "#a5b4fc" : "rgba(232,234,240,0.3)", border: "1px solid " + (isLoggedIn ? "rgba(99,102,241,0.25)" : "rgba(255,255,255,0.06)"), transition: "all 0.15s", opacity: isLoggedIn ? 1 : 0.5 }}
@@ -1152,7 +1211,7 @@ function SalaryTable({ isLoggedIn }) {
           </DialogContent>
         </Dialog>
 
-        <VoteModal open={openVote} onClose={() => setOpenVote(false)} salary={selectedSalary} />
+        <VoteModal open={openVote} onClose={() => setOpenVote(false)} salary={selectedSalary} onVoteSuccess={() => loadSalaries(currentPage, { background: true })} />
       </div>
     </>
   );
