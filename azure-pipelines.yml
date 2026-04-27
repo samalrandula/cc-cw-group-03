@@ -7,207 +7,117 @@ pool:
 variables:
   DOCKER_REGISTRY: samalrandula
 
-steps:
-
-  - checkout: self
-    fetchDepth: 0
-
-  # -----------------------------
-  # Detect Changed Services
-  # -----------------------------
-  - script: |
-      echo "Detecting changed services..."
-
-      # Ensure history exists
-      git fetch origin $(Build.SourceBranchName)
-
-      CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-      
-      echo "Changed files:"
-      echo "$CHANGED_FILES"
-      
-      # Default all to false
-      echo "##vso[task.setvariable variable=salaryChanged]false"
-      echo "##vso[task.setvariable variable=bffChanged]false"
-      echo "##vso[task.setvariable variable=voteChanged]false"
-      echo "##vso[task.setvariable variable=searchChanged]false"
-      echo "##vso[task.setvariable variable=statsChanged]false"
-      echo "##vso[task.setvariable variable=identityChanged]false"
-      echo "##vso[task.setvariable variable=reportChanged]false"
-      echo "##vso[task.setvariable variable=frontendChanged]false"
-      
-      # Detect changes
-      if echo "$CHANGED_FILES" | grep -q "^salary_submission_service/"; then
-        echo "##vso[task.setvariable variable=salaryChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^bff_service/"; then
-        echo "##vso[task.setvariable variable=bffChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^vote_service/"; then
-        echo "##vso[task.setvariable variable=voteChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^search_service/"; then
-        echo "##vso[task.setvariable variable=searchChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^stats_service/"; then
-        echo "##vso[task.setvariable variable=statsChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^identity_service/"; then
-        echo "##vso[task.setvariable variable=identityChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^report_service/"; then
-        echo "##vso[task.setvariable variable=reportChanged]true"
-      fi
-      
-      if echo "$CHANGED_FILES" | grep -q "^frontend_service/"; then
-        echo "##vso[task.setvariable variable=frontendChanged]true"
-      fi
-    
-
-    displayName: Detect changed services
-
-  # -----------------------------
-  # Login to Docker Hub
-  # -----------------------------
-  - task: Docker@2
-    displayName: Login to Docker
-    inputs:
-      command: login
-      containerRegistry: 'dockerhub-connection'
-
-  # -----------------------------
-  # Build & Push ALL services
-  # -----------------------------
-
-  # Salary Submission
-  - task: Docker@2
-    displayName: Build & Push salary-submission-service
-    condition: eq(variables['salaryChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/salary-submission-service
-      dockerfile: salary_submission_service/dockerfile
-      buildContext: salary_submission_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-  # BFF
-  - task: Docker@2
-    displayName: Build & Push bff-service
-    condition: eq(variables['bffChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/bff-service
-      dockerfile: bff_service/dockerfile
-      buildContext: bff_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-  # Vote
-  - task: Docker@2
-    displayName: Build & Push vote-service
-    condition: eq(variables['voteChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/vote-service
-      dockerfile: vote_service/dockerfile
-      buildContext: vote_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-  # Search
-  - task: Docker@2
-    displayName: Build & Push search-service
-    condition: eq(variables['searchChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/search-service
-      dockerfile: search_service/dockerfile
-      buildContext: search_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-  # Stats
-  - task: Docker@2
-    displayName: Build & Push stats-service
-    condition: eq(variables['statsChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/stats-service
-      dockerfile: stats_service/dockerfile
-      buildContext: stats_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-  # Identity
-  - task: Docker@2
-    displayName: Build & Push identity-service
-    condition: eq(variables['identityChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/identity-service
-      dockerfile: identity_service/dockerfile
-      buildContext: identity_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-  # Report
-  - task: Docker@2
-    displayName: Build & Push report-service
-    condition: eq(variables['reportChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/report-service
-      dockerfile: report_service/dockerfile
-      buildContext: report_service
-      tags: |
-        latest
-        $(Build.BuildId)        
-
-  # Frontend (with build args)
-  - task: Docker@2
-    displayName: Build & Push frontend-service
-    condition: eq(variables['frontendChanged'], 'true')
-    inputs:
-      command: buildAndPush
-      repository: $(DOCKER_REGISTRY)/frontend-service
-      dockerfile: frontend_service/dockerfile
-      buildContext: frontend_service
-      tags: |
-        latest
-        $(Build.BuildId)
-
-# =============================
-# Deploy Stage (Appended)
-# =============================
 stages:
+
+  # =============================
+  # BUILD STAGE
+  # =============================
+  - stage: Build
+    displayName: Build and Push Images
+
+    jobs:
+      - job: BuildImages
+        displayName: Build Services
+
+        steps:
+
+          - checkout: self
+            fetchDepth: 0
+
+          # -----------------------------
+          # Detect Changed Services
+          # -----------------------------
+          - script: |
+              echo "Detecting changed services..."
+              
+              git fetch origin $(Build.SourceBranchName)
+              
+              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+              
+              echo "$CHANGED_FILES"
+              
+              echo "##vso[task.setvariable variable=salaryChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=bffChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=voteChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=searchChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=statsChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=identityChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=reportChanged;isOutput=true]false"
+              echo "##vso[task.setvariable variable=frontendChanged;isOutput=true]false"
+              
+              if echo "$CHANGED_FILES" | grep -q "^bff_service/"; then
+                echo "##vso[task.setvariable variable=bffChanged;isOutput=true]true"
+              fi
+              
+              if echo "$CHANGED_FILES" | grep -q "^frontend_service/"; then
+                echo "##vso[task.setvariable variable=frontendChanged;isOutput=true]true"
+              fi
+            name: detectChanges
+            displayName: Detect changed services
+
+          # -----------------------------
+          # Login to Docker Hub
+          # -----------------------------
+          - task: Docker@2
+            displayName: Login to Docker
+            inputs:
+              command: login
+              containerRegistry: dockerhub-connection
+
+          # -----------------------------
+          # Build & Push BFF
+          # -----------------------------
+          - task: Docker@2
+            displayName: Build & Push bff-service
+            condition: eq(variables['bffChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/bff-service
+              dockerfile: bff_service/dockerfile
+              buildContext: bff_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # -----------------------------
+          # Build & Push Frontend
+          # -----------------------------
+          - task: Docker@2
+            displayName: Build & Push frontend-service
+            condition: eq(variables['frontendChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/frontend-service
+              dockerfile: frontend_service/dockerfile
+              buildContext: frontend_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+  # =============================
+  # DEPLOY STAGE
+  # =============================
   - stage: Deploy
     displayName: Deploy to Kubernetes
-    dependsOn: []
-    condition: succeeded()
+    dependsOn: Build
+
+    variables:
+      bffChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.bffChanged'] ]
+      frontendChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.frontendChanged'] ]
 
     jobs:
       - job: DeployToK8s
-        displayName: Deploy
+        displayName: Deploy BFF & Frontend
+
         steps:
 
           - checkout: self
 
+          # -----------------------------
+          # Setup kubectl
+          # -----------------------------
           - task: DownloadSecureFile@1
             name: kubeconfig
-            displayName: Download kubeconfig
             inputs:
               secureFile: kubeconfig.yaml
 
@@ -219,16 +129,25 @@ stages:
               kubectl get nodes
             displayName: Configure kubectl
 
+          # -----------------------------
+          # Apply Services
+          # -----------------------------
           - script: |
               kubectl apply -f k8s/services/bff-service.yaml
               kubectl apply -f k8s/services/frontend-service.yaml
             displayName: Apply Services
 
+          # -----------------------------
+          # Apply Deployments
+          # -----------------------------
           - script: |
               kubectl apply -f k8s/deployments/bff-deployment.yaml
               kubectl apply -f k8s/deployments/frontend-deployment.yaml
             displayName: Apply Deployments
 
+          # -----------------------------
+          # Restart if changed
+          # -----------------------------
           - script: |
               if [ "$(bffChanged)" = "true" ]; then
                 kubectl rollout restart deployment/bff-service
@@ -239,11 +158,17 @@ stages:
               fi
             displayName: Restart Changed Deployments
 
+          # -----------------------------
+          # Wait for rollout
+          # -----------------------------
           - script: |
               kubectl rollout status deployment/bff-service --timeout=180s
               kubectl rollout status deployment/frontend-service --timeout=180s
             displayName: Wait for Rollout
 
+          # -----------------------------
+          # Verify
+          # -----------------------------
           - script: |
               kubectl get pods
               kubectl get svc
