@@ -22,4 +22,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: service-config
+          env:
+            - name: SPRING_LIQUIBASE_ENABLED
+              value: "false"
             
