@@ -8,8 +8,8 @@ variables:
   K8S_NAMESPACE_APP: app
   K8S_NAMESPACE_DATA: data
   AZURE_SERVICE_CONNECTION: azure-aks-connection
-  RESOURCE_GROUP: rg-microservices
-  AKS_CLUSTER: microservices-aks1
+  RESOURCE_GROUP: cc-cw-group-03
+  AKS_CLUSTER: zalaryCluster
 
 pool:
   name: Default
