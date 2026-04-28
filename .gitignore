@@ -51,7 +51,8 @@ out/
 # ============================================================
 *.class
 *.jar
-!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
 *.war
 *.ear
 *.zip
@@ -100,25 +101,6 @@ logs/
 log/
 *.log
 
-# ============================================================
-# Environment variables
-# ============================================================
-.env
-.env.local
-.env.*.local
-*.env
-
-# ============================================================
-# Secrets & credentials
-# ============================================================
-application-local.properties
-application-local.yml
-application-dev.properties
-application-dev.yml
-*-secret.properties
-*-secret.yml
-secrets/
-credentials/
 
 # ============================================================
 # Test coverage
