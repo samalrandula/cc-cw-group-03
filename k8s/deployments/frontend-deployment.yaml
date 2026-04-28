@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend-service
-          image: sahanr94/frontend-service:latest
+          image: samalrandula/frontend-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

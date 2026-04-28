@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: report-service
-          image: sahanr94/report-service:latest
+          image: samalrandula/report-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8087

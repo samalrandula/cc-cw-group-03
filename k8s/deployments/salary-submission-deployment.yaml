@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: salary-submission-service
-          image: sahanr94/salary-submission-service:latest
+          image: samalrandula/salary-submission-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8081
