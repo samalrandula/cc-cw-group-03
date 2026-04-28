@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -40,8 +38,8 @@ public class Salary {
     @Column(nullable = false)
     private Integer yearsOfExperience;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "experience_level", nullable = false, columnDefinition = "experience_level")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "experience_level", nullable = false)
     private ExperienceLevel experienceLevel;
 
     @Column
@@ -49,4 +47,8 @@ public class Salary {
 
     @Column(nullable = false)
     private Boolean anonymize = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private SalaryStatus status;
 }
