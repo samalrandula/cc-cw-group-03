@@ -4,7 +4,7 @@ metadata:
   name: bff-config
   namespace: app
 data:
-  SALARY_SERVICE_URL: "http://salary-submission-service:8081"
+  SALARY_SUBMISSION_SERVICE_URL: "http://salary-submission-service:8081"
   VOTE_SERVICE_URL: "http://vote-service:8083"
   SEARCH_SERVICE_URL: "http://search-service:8084"
   STATS_SERVICE_URL: "http://stats-service:8085"
