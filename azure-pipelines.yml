@@ -123,8 +123,11 @@ stages:
 
           # BFF Tests
           - script: |
-              cd bff_service
-              ./gradlew test
+              docker run --rm \
+                -v $(pwd)/bff_service:/app \
+                -w /app \
+                gradle:8.7-jdk21 \
+                ./gradlew test
             displayName: 'Run BFF Unit Tests'
 
           - task: PublishTestResults@2
