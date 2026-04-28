@@ -1,0 +1,402 @@
+trigger:
+  - main
+
+pool:
+  name: Default
+
+variables:
+  DOCKER_REGISTRY: samalrandula
+  K8S_NAMESPACE_APP: app
+  K8S_NAMESPACE_DATA: data
+
+stages:
+  # ============================================
+  # STAGE 1: BUILD & PUSH DOCKER IMAGES
+  # ============================================
+  - stage: Build
+    displayName: 'Build and Push Docker Images'
+    jobs:
+      - job: BuildImages
+        displayName: 'Build Changed Services'
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          # -----------------------------
+          # Detect Changed Services
+          # -----------------------------
+          - script: |
+              echo "Detecting changed services..."
+              
+              # Ensure history exists
+              git fetch origin $(Build.SourceBranchName) || true
+              
+              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "all")
+              
+              echo "Changed files:"
+              echo "$CHANGED_FILES"
+              
+              # If first commit or can't detect changes, build all
+              if [ "$CHANGED_FILES" = "all" ]; then
+                echo "Building all services (first commit or detection failed)"
+                echo "##vso[task.setvariable variable=salaryChanged;isOutput=true]true"
+                echo "##vso[task.setvariable variable=bffChanged;isOutput=true]true"
+                echo "##vso[task.setvariable variable=voteChanged;isOutput=true]true"
+                echo "##vso[task.setvariable variable=searchChanged;isOutput=true]true"
+                echo "##vso[task.setvariable variable=statsChanged;isOutput=true]true"
+                echo "##vso[task.setvariable variable=identityChanged;isOutput=true]true"
+                echo "##vso[task.setvariable variable=frontendChanged;isOutput=true]true"
+              else
+                # Default all to false
+                echo "##vso[task.setvariable variable=salaryChanged;isOutput=true]false"
+                echo "##vso[task.setvariable variable=bffChanged;isOutput=true]false"
+                echo "##vso[task.setvariable variable=voteChanged;isOutput=true]false"
+                echo "##vso[task.setvariable variable=searchChanged;isOutput=true]false"
+                echo "##vso[task.setvariable variable=statsChanged;isOutput=true]false"
+                echo "##vso[task.setvariable variable=identityChanged;isOutput=true]false"
+                echo "##vso[task.setvariable variable=frontendChanged;isOutput=true]false"
+              
+                # Detect changes
+                if echo "$CHANGED_FILES" | grep -q "^salary_submission_service/"; then
+                  echo "Salary service changed"
+                  echo "##vso[task.setvariable variable=salaryChanged;isOutput=true]true"
+                fi
+              
+                if echo "$CHANGED_FILES" | grep -q "^bff_service/"; then
+                  echo "BFF service changed"
+                  echo "##vso[task.setvariable variable=bffChanged;isOutput=true]true"
+                fi
+              
+                if echo "$CHANGED_FILES" | grep -q "^vote_service/"; then
+                  echo "Vote service changed"
+                  echo "##vso[task.setvariable variable=voteChanged;isOutput=true]true"
+                fi
+              
+                if echo "$CHANGED_FILES" | grep -q "^search_service/"; then
+                  echo "Search service changed"
+                  echo "##vso[task.setvariable variable=searchChanged;isOutput=true]true"
+                fi
+              
+                if echo "$CHANGED_FILES" | grep -q "^stats_service/"; then
+                  echo "Stats service changed"
+                  echo "##vso[task.setvariable variable=statsChanged;isOutput=true]true"
+                fi
+              
+                if echo "$CHANGED_FILES" | grep -q "^identity_service/"; then
+                  echo "Identity service changed"
+                  echo "##vso[task.setvariable variable=identityChanged;isOutput=true]true"
+                fi
+              
+                if echo "$CHANGED_FILES" | grep -q "^frontend_service/"; then
+                  echo "Frontend service changed"
+                  echo "##vso[task.setvariable variable=frontendChanged;isOutput=true]true"
+                fi
+              fi
+            name: detectChanges
+            displayName: 'Detect changed services'
+
+          # -----------------------------
+          # Login to Docker Hub
+          # -----------------------------
+          - task: Docker@2
+            displayName: 'Login to Docker Hub'
+            inputs:
+              command: login
+              containerRegistry: 'dockerhub-connection'
+
+          # -----------------------------
+          # Build & Push Services
+          # -----------------------------
+
+          # Salary Submission
+          - task: Docker@2
+            displayName: 'Build & Push salary-submission-service'
+            condition: eq(variables['detectChanges.salaryChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/salary-submission-service
+              dockerfile: salary_submission_service/dockerfile
+              buildContext: salary_submission_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # BFF
+          - task: Docker@2
+            displayName: 'Build & Push bff-service'
+            condition: eq(variables['detectChanges.bffChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/bff-service
+              dockerfile: bff_service/dockerfile
+              buildContext: bff_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # Vote
+          - task: Docker@2
+            displayName: 'Build & Push vote-service'
+            condition: eq(variables['detectChanges.voteChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/vote-service
+              dockerfile: vote_service/dockerfile
+              buildContext: vote_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # Search
+          - task: Docker@2
+            displayName: 'Build & Push search-service'
+            condition: eq(variables['detectChanges.searchChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/search-service
+              dockerfile: search_service/dockerfile
+              buildContext: search_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # Stats
+          - task: Docker@2
+            displayName: 'Build & Push stats-service'
+            condition: eq(variables['detectChanges.statsChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/stats-service
+              dockerfile: stats_service/dockerfile
+              buildContext: stats_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # Identity
+          - task: Docker@2
+            displayName: 'Build & Push identity-service'
+            condition: eq(variables['detectChanges.identityChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/identity-service
+              dockerfile: identity_service/dockerfile
+              buildContext: identity_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          # Frontend
+          - task: Docker@2
+            displayName: 'Build & Push frontend-service'
+            condition: eq(variables['detectChanges.frontendChanged'], 'true')
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/frontend-service
+              dockerfile: frontend_service/dockerfile
+              buildContext: frontend_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+  # ============================================
+  # STAGE 2: DEPLOY TO KUBERNETES
+  # ============================================
+  - stage: Deploy
+    displayName: 'Deploy to Kubernetes'
+    dependsOn: Build
+    condition: succeeded()
+    variables:
+      salaryChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.salaryChanged'] ]
+      bffChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.bffChanged'] ]
+      voteChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.voteChanged'] ]
+      searchChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.searchChanged'] ]
+      statsChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.statsChanged'] ]
+      identityChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.identityChanged'] ]
+      frontendChanged: $[ stageDependencies.Build.BuildImages.outputs['detectChanges.frontendChanged'] ]
+    jobs:
+      - job: DeployToK8s
+        displayName: 'Deploy Application to Kubernetes'
+        steps:
+          - checkout: self
+
+          # -----------------------------
+          # Download and Configure kubectl
+          # -----------------------------
+          - task: DownloadSecureFile@1
+            name: kubeconfig
+            displayName: 'Download kubeconfig'
+            inputs:
+              secureFile: 'kubeconfig.yaml'
+
+          - script: |
+              echo "Setting up kubectl..."
+              mkdir -p ~/.kube
+              cp $(kubeconfig.secureFilePath) ~/.kube/config
+              chmod 600 ~/.kube/config
+              
+              # Test connection
+              kubectl cluster-info
+              kubectl get nodes
+            displayName: 'Configure kubectl'
+
+          # -----------------------------
+          # Deploy Database (First Time Only)
+          # -----------------------------
+#          - script: |
+#              echo "Checking if PostgreSQL is already deployed..."
+#
+#              if ! kubectl get namespace $(K8S_NAMESPACE_DATA) 2>/dev/null; then
+#                echo "Data namespace doesn't exist, creating..."
+#                kubectl apply -f k8s/namespaces/namespaces.yaml
+#              fi
+#
+#              if ! kubectl get deployment postgresql -n $(K8S_NAMESPACE_DATA) 2>/dev/null; then
+#                echo "PostgreSQL not deployed, deploying now..."
+#                kubectl apply -f k8s/postgres/postgres-secret.yaml
+#                kubectl apply -f k8s/postgres/postgres-init-configmap.yaml
+#                kubectl apply -f k8s/postgres/postgres-pvc.yaml
+#                kubectl apply -f k8s/postgres/postgres-deployment.yaml
+#                kubectl apply -f k8s/postgres/postgres-service.yaml
+#
+#                echo "Waiting for PostgreSQL to be ready..."
+#                kubectl wait --for=condition=ready pod -l app=postgresql -n $(K8S_NAMESPACE_DATA) --timeout=300s
+#              else
+#                echo "PostgreSQL already deployed, skipping..."
+#              fi
+#            displayName: 'Deploy PostgreSQL (if needed)'
+#            continueOnError: false
+
+          # -----------------------------
+          # Apply Namespaces
+          # -----------------------------
+          - script: |
+              echo "Applying namespaces..."
+              kubectl apply -f k8s/namespaces/namespaces.yaml
+            displayName: 'Apply Namespaces'
+
+          # -----------------------------
+          # Apply ConfigMaps and Secrets
+          # -----------------------------
+          - script: |
+              echo "Applying ConfigMaps..."
+              kubectl apply -f k8s/configmaps/ -n $(K8S_NAMESPACE_APP)
+              
+              echo "Applying Secrets..."
+              kubectl apply -f k8s/secrets/ -n $(K8S_NAMESPACE_APP)
+            displayName: 'Apply ConfigMaps and Secrets'
+
+          # -----------------------------
+          # Apply Services
+          # -----------------------------
+          - script: |
+              echo "Applying Kubernetes Services..."
+              kubectl apply -f k8s/services/ -n $(K8S_NAMESPACE_APP)
+            displayName: 'Apply Kubernetes Services'
+
+          # -----------------------------
+          # Apply Deployments
+          # -----------------------------
+          - script: |
+              echo "Applying Deployments..."
+              kubectl apply -f k8s/deployments/ -n $(K8S_NAMESPACE_APP)
+            displayName: 'Apply Deployments'
+
+          # -----------------------------
+          # Apply Ingress
+          # -----------------------------
+          - script: |
+              echo "Applying Ingress..."
+              kubectl apply -f k8s/ingress/ingress.yaml -n $(K8S_NAMESPACE_APP)
+            displayName: 'Apply Ingress'
+
+          # -----------------------------
+          # Restart Changed Deployments
+          # -----------------------------
+          - script: |
+              echo "Restarting changed deployments to pull latest images..."
+              
+              if [ "$(salaryChanged)" = "true" ]; then
+                echo "Restarting salary-submission-service..."
+                kubectl rollout restart deployment/salary-submission-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              if [ "$(bffChanged)" = "true" ]; then
+                echo "Restarting bff-service..."
+                kubectl rollout restart deployment/bff-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              if [ "$(voteChanged)" = "true" ]; then
+                echo "Restarting vote-service..."
+                kubectl rollout restart deployment/vote-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              if [ "$(searchChanged)" = "true" ]; then
+                echo "Restarting search-service..."
+                kubectl rollout restart deployment/search-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              if [ "$(statsChanged)" = "true" ]; then
+                echo "Restarting stats-service..."
+                kubectl rollout restart deployment/stats-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              if [ "$(identityChanged)" = "true" ]; then
+                echo "Restarting identity-service..."
+                kubectl rollout restart deployment/identity-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              if [ "$(frontendChanged)" = "true" ]; then
+                echo "Restarting frontend-service..."
+                kubectl rollout restart deployment/frontend-service -n $(K8S_NAMESPACE_APP)
+              fi
+              
+              echo "Restart commands issued."
+            displayName: 'Restart Changed Deployments'
+
+          # -----------------------------
+          # Wait for Rollout to Complete
+          # -----------------------------
+          - script: |
+              echo "Waiting for all deployments to be ready..."
+              
+              kubectl rollout status deployment/salary-submission-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              kubectl rollout status deployment/bff-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              kubectl rollout status deployment/vote-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              kubectl rollout status deployment/search-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              kubectl rollout status deployment/stats-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              kubectl rollout status deployment/identity-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              kubectl rollout status deployment/frontend-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+              
+              echo "All deployments are ready!"
+            displayName: 'Wait for Rollout to Complete'
+
+          # -----------------------------
+          # Verify Deployment
+          # -----------------------------
+          - script: |
+              echo "========================================="
+              echo "Deployment Verification"
+              echo "========================================="
+              
+              echo ""
+              echo "Pods in app namespace:"
+              kubectl get pods -n $(K8S_NAMESPACE_APP)
+              
+              echo ""
+              echo "Pods in data namespace:"
+              kubectl get pods -n $(K8S_NAMESPACE_DATA)
+              
+              echo ""
+              echo "Services in app namespace:"
+              kubectl get svc -n $(K8S_NAMESPACE_APP)
+              
+              echo ""
+              echo "Ingress:"
+              kubectl get ingress -n $(K8S_NAMESPACE_APP)
+              
+              echo ""
+              INGRESS_IP=$(kubectl get ingress -n $(K8S_NAMESPACE_APP) main-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+              echo "Application URL: http://$INGRESS_IP"
+              echo "========================================="
+            displayName: 'Verify Deployment'

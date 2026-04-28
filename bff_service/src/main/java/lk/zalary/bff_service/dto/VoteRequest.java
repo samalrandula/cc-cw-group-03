@@ -9,7 +9,7 @@ public class VoteRequest {
 
     @NotNull(message = "Submission ID is required")
     @JsonAlias("salarySubmissionId")
-    private Long submissionId;
+    private Long salarySubmissionId;
 
     @NotBlank(message = "Vote type is required")
     @Pattern(regexp = "^(UPVOTE|DOWNVOTE)$",

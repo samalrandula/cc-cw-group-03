@@ -35,8 +35,8 @@ public interface SalaryRepository extends JpaRepository<SalarySubmission, Intege
     );
 
     List<SalarySubmission> findByStatusAndCountryAndExperienceLevel(
-            SalaryStatus status, 
-            String country, 
+            SalaryStatus status,
+            String country,
             ExperienceLevel experienceLevel
     );
 

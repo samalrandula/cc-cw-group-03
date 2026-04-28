@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@mui/material";
 import SalarySubmissionForm from "./SalarySubmissionForm";
-import { fetchSalaries, fetchCurrencies, fetchCountries } from "../api/salaryApi";
-import { submitVote } from "../api/voteApi";
-import { submitReport, REPORT_REASONS } from "../api/reportApi";
+import { fetchSalaries, fetchCurrencies, fetchCountries, fetchJobRoles } from "../api/SalaryApi";
+import { submitVote, fetchVoteStatus } from "../api/VoteApi";
+import { submitReport, REPORT_REASONS } from "../api/ReportApi";
 
 /* ── Inline styles ── */
 const S = {
@@ -220,7 +220,7 @@ const MultiSelectDropdown = ({ label, icon, options, selected, onChange, isLoadi
   );
 };
 
-/* ── Tag Input Filter ── */
+/* ── Tag Input Filter (generic, used for Company) ── */
 const TagInput = ({ label, icon, tags, onChange }) => {
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -228,105 +228,170 @@ const TagInput = ({ label, icon, tags, onChange }) => {
 
   const addTag = (value) => {
     const trimmed = value.trim();
-    if (trimmed && !tags.includes(trimmed)) {
-      onChange([...tags, trimmed]);
-    }
+    if (trimmed && !tags.includes(trimmed)) onChange([...tags, trimmed]);
     setInputValue("");
   };
 
-  const removeTag = (tag) => {
-    onChange(tags.filter((t) => t !== tag));
-  };
+  const removeTag = (tag) => onChange(tags.filter((t) => t !== tag));
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addTag(inputValue);
-    } else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) {
-      removeTag(tags[tags.length - 1]);
-    }
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(inputValue); }
+    else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) removeTag(tags[tags.length - 1]);
   };
 
   return (
-    <div
-      onClick={() => inputRef.current?.focus()}
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 10px",
-        borderRadius: 10,
-        border: "1px solid " + (focused ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.08)"),
-        background: focused ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.03)",
-        cursor: "text",
-        minWidth: 180,
-        maxWidth: 320,
-        transition: "all 0.15s",
-      }}
-    >
+    <div onClick={() => inputRef.current?.focus()} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 10, border: "1px solid " + (focused ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.08)"), background: focused ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.03)", cursor: "text", minWidth: 180, maxWidth: 320, transition: "all 0.15s" }}>
       <span style={{ fontSize: 14, userSelect: "none" }}>{icon}</span>
       {tags.length === 0 && inputValue === "" && (
-        <span style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", pointerEvents: "none", userSelect: "none" }}>
-          {label}…
-        </span>
+        <span style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", pointerEvents: "none", userSelect: "none" }}>{label}…</span>
       )}
       {tags.map((tag) => (
-        <span
-          key={tag}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "2px 8px",
-            borderRadius: 99,
-            background: "rgba(99,102,241,0.2)",
-            border: "1px solid rgba(99,102,241,0.35)",
-            color: "#a5b4fc",
-            fontSize: 12,
-            fontWeight: 600,
-            fontFamily: "'DM Sans', sans-serif",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <span key={tag} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 99, background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", color: "#a5b4fc", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>
           {tag}
-          <button
-            onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(165,180,252,0.6)",
-              cursor: "pointer",
-              padding: 0,
-              lineHeight: 1,
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >×</button>
+          <button onClick={(e) => { e.stopPropagation(); removeTag(tag); }} style={{ background: "none", border: "none", color: "rgba(165,180,252,0.6)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: 13, display: "flex", alignItems: "center" }}>×</button>
         </span>
       ))}
-      <input
-        ref={inputRef}
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={() => { setFocused(false); if (inputValue.trim()) addTag(inputValue); }}
-        style={{
-          background: "none",
-          border: "none",
-          outline: "none",
-          color: "#f1f5f9",
-          fontSize: 13,
-          fontFamily: "'DM Sans', sans-serif",
-          minWidth: 80,
-          flex: 1,
-          padding: "2px 0",
-        }}
-        placeholder={tags.length > 0 ? "+" : ""}
-      />
+      <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); if (inputValue.trim()) addTag(inputValue); }} style={{ background: "none", border: "none", outline: "none", color: "#f1f5f9", fontSize: 13, fontFamily: "'DM Sans', sans-serif", minWidth: 80, flex: 1, padding: "2px 0" }} placeholder={tags.length > 0 ? "+" : ""} />
+    </div>
+  );
+};
+
+/* ── Role Tag Autocomplete ───────────────────────────────────────────────────
+   Like TagInput but powered by fetchJobRoles:
+   - Type 3+ chars → debounced API call → dropdown with highlighted matches
+   - Click or Enter to add a role tag; free-text also accepted on Enter/comma
+   - Each added role becomes a removable tag, sent as comma-separated to the API
+──────────────────────────────────────────────────────────────────────────── */
+const RoleTagAutocomplete = ({ icon, tags, onChange }) => {
+  const [inputValue, setInputValue]   = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [open, setOpen]               = useState(false);
+  const [fetching, setFetching]       = useState(false);
+  const [focused, setFocused]         = useState(false);
+  const [activeIdx, setActiveIdx]     = useState(-1);
+  const wrapperRef                    = useRef(null);
+  const inputRef                      = useRef(null);
+  const debounceRef                   = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const addTag = (value) => {
+    const trimmed = value.trim();
+    if (trimmed && !tags.includes(trimmed)) onChange([...tags, trimmed]);
+    setInputValue("");
+    setSuggestions([]);
+    setOpen(false);
+    setActiveIdx(-1);
+  };
+
+  const removeTag = (tag) => onChange(tags.filter((t) => t !== tag));
+
+  const handleInput = (e) => {
+    const text = e.target.value;
+    setInputValue(text);
+    setActiveIdx(-1);
+    clearTimeout(debounceRef.current);
+
+    if (text.length < 3) { setSuggestions([]); setOpen(false); return; }
+
+    debounceRef.current = setTimeout(async () => {
+      setFetching(true);
+      try {
+        const results = await fetchJobRoles(text);
+        // Exclude roles already tagged
+        const filtered = results.filter((r) => !tags.includes(r));
+        setSuggestions(filtered);
+        setOpen(filtered.length > 0);
+      } catch { setSuggestions([]); setOpen(false); }
+      finally { setFetching(false); }
+    }, 300);
+  };
+
+  const handleKeyDown = (e) => {
+    if (open && suggestions.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); return; }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, -1)); return; }
+      if (e.key === "Enter" && activeIdx >= 0) { e.preventDefault(); addTag(suggestions[activeIdx]); return; }
+      if (e.key === "Escape") { setOpen(false); setActiveIdx(-1); return; }
+    }
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); if (inputValue.trim()) addTag(inputValue); }
+    else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) removeTag(tags[tags.length - 1]);
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: "relative" }}>
+      {/* Tag + input row */}
+      <div onClick={() => inputRef.current?.focus()} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 10, border: "1px solid " + (focused || open ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.08)"), background: focused || open ? "rgba(99,102,241,0.07)" : "rgba(255,255,255,0.03)", cursor: "text", minWidth: 200, maxWidth: 340, transition: "all 0.15s" }}>
+        <span style={{ fontSize: 14, userSelect: "none" }}>{icon}</span>
+
+        {tags.length === 0 && inputValue === "" && (
+          <span style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", pointerEvents: "none", userSelect: "none" }}>Role…</span>
+        )}
+
+        {tags.map((tag) => (
+          <span key={tag} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 99, background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", color: "#a5b4fc", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>
+            {tag}
+            <button onClick={(e) => { e.stopPropagation(); removeTag(tag); }} style={{ background: "none", border: "none", color: "rgba(165,180,252,0.6)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: 13, display: "flex", alignItems: "center" }}>×</button>
+          </span>
+        ))}
+
+        {/* Input + spinner */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 80 }}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true); }}
+            onBlur={() => setFocused(false)}
+            placeholder={tags.length > 0 ? "+" : ""}
+            style={{ background: "none", border: "none", outline: "none", color: "#f1f5f9", fontSize: 13, fontFamily: "'DM Sans', sans-serif", width: "100%", padding: "2px 0", paddingRight: fetching ? 18 : 0 }}
+          />
+          {fetching && (
+            <svg style={{ position: "absolute", right: 0, flexShrink: 0, animation: "roleSpinFilter 0.8s linear infinite" }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          )}
+        </div>
+      </div>
+
+      {/* Hint */}
+      {inputValue.length > 0 && inputValue.length < 3 && (
+        <div style={{ fontSize: 11, color: "rgba(232,234,240,0.3)", marginTop: 4, paddingLeft: 4, fontFamily: "'DM Sans', sans-serif" }}>
+          {3 - inputValue.length} more character{3 - inputValue.length !== 1 ? "s" : ""} to search…
+        </div>
+      )}
+
+      {/* Suggestions dropdown */}
+      {open && suggestions.length > 0 && (
+        <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 6, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(13,17,23,0.97)", backdropFilter: "blur(12px)", boxShadow: "0 16px 40px rgba(0,0,0,0.55)", zIndex: 1000, minWidth: 240, maxWidth: 340, maxHeight: 240, overflowY: "auto" }}>
+          <div style={{ padding: "6px" }}>
+            {suggestions.map((role, idx) => {
+              const isActive = idx === activeIdx;
+              const matchIdx = role.toLowerCase().indexOf(inputValue.toLowerCase());
+              const before = matchIdx >= 0 ? role.slice(0, matchIdx) : role;
+              const match  = matchIdx >= 0 ? role.slice(matchIdx, matchIdx + inputValue.length) : "";
+              const after  = matchIdx >= 0 ? role.slice(matchIdx + inputValue.length) : "";
+              return (
+                <button key={role} type="button"
+                  onMouseDown={(e) => { e.preventDefault(); addTag(role); }}
+                  onMouseEnter={() => setActiveIdx(idx)}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: isActive ? "rgba(99,102,241,0.18)" : "transparent", color: isActive ? "#a5b4fc" : "rgba(232,234,240,0.75)", fontSize: 13, fontFamily: "'DM Sans', sans-serif", textAlign: "left", cursor: "pointer", transition: "background 0.1s" }}>
+                  {before}<strong style={{ color: "#a5b4fc", fontWeight: 700 }}>{match}</strong>{after}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes roleSpinFilter { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
@@ -334,7 +399,7 @@ const TagInput = ({ label, icon, tags, onChange }) => {
 /* ── Skeleton row ── */
 const SkeletonRow = () => (
   <tr>
-    {[200, 160, 130, 80, 110, 90, 60].map((w, i) => (
+    {[200, 160, 130, 80, 110, 90, 80, 60].map((w, i) => (
       <td key={i} style={S.td}>
         <div style={{ height: 14, width: w, borderRadius: 6, background: "rgba(255,255,255,0.06)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
       </td>
@@ -366,7 +431,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, loading }) => {
 };
 
 /* ── Vote Success Animation ── */
-const VoteSuccessOverlay = ({ voteType }) => {
+const VoteSuccessOverlay = ({ voteType, isRemoval }) => {
   const isUp = voteType === "UPVOTE";
   return (
     <div style={{
@@ -422,7 +487,7 @@ const VoteSuccessOverlay = ({ voteType }) => {
       </div>
 
       <div style={{ marginTop: 20, fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: isUp ? "#34d399" : "#f87171", animation: "voteText 0.35s ease-out 0.15s both" }}>
-        {isUp ? "Marked as Accurate!" : "Marked as Inaccurate"}
+        {isRemoval ? "Vote removed!" : isUp ? "Upvoted successfully!" : "Downvoted successfully!"}
       </div>
       <div style={{ marginTop: 6, fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", animation: "voteText 0.35s ease-out 0.25s both" }}>
         Thanks for keeping the data honest
@@ -432,44 +497,94 @@ const VoteSuccessOverlay = ({ voteType }) => {
 };
 
 /* ── Vote Modal ── */
-const VoteModal = ({ open, onClose, salary }) => {
+const VoteModal = ({ open, onClose, salary, onVoteSuccess }) => {
   const [vote, setVote]             = useState("UPVOTE");
+  const [initialVoteStatus, setInitialVoteStatus] = useState("NONE"); // what the API returned
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState(null);
-  // phase: "vote" | "success" | "transitioning" | "report" | "reportSuccess"
-  const [phase, setPhase]           = useState("vote");
+  const [voteError, setVoteError]   = useState(null);
+  // votePhase: "loading" | "idle" | "success"
+  const [votePhase, setVotePhase]   = useState("loading");
   const [successVote, setSuccessVote] = useState(null);
 
-  // Report state
-  const [reason, setReason]           = useState("");
-  const [comment, setComment]         = useState("");
+  // Report panel — independent of voting
+  const [reportOpen, setReportOpen]           = useState(false);
+  const [reason, setReason]                   = useState("");
+  const [comment, setComment]                 = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reportError, setReportError] = useState(null);
-  const [commentFocused, setCommentFocused] = useState(false);
+  const [reportError, setReportError]         = useState(null);
+  const [reportDone, setReportDone]           = useState(false);
+  const [commentFocused, setCommentFocused]   = useState(false);
 
+  // Ref for the animated report panel container
+  const reportPanelRef = useRef(null);
+
+  // Reset + fetch vote status on open
   useEffect(() => {
-    if (open) {
-      setVote("UPVOTE"); setSubmitting(false); setError(null);
-      setPhase("vote"); setSuccessVote(null);
-      setReason(""); setComment(""); setReportError(null); setReportSubmitting(false);
-    }
+    if (!open || !salary?.id) return;
+
+    setSubmitting(false); setVoteError(null);
+    setVotePhase("loading"); setSuccessVote(null);
+    setReportOpen(false);
+    setReason(""); setComment(""); setReportError(null);
+    setReportSubmitting(false); setReportDone(false);
+
+    fetchVoteStatus(salary.id)
+      .then((data) => {
+        const status = data?.userVoteStatus ?? "NONE";
+        setInitialVoteStatus(status);
+        setVote(status === "DOWNVOTE" ? "DOWNVOTE" : "UPVOTE");
+        setVotePhase("idle");
+      })
+      .catch(() => { setInitialVoteStatus("NONE"); setVote("UPVOTE"); setVotePhase("idle"); });
   }, [open, salary?.id]);
+
+  // Animate the report panel open / close by driving max-height + opacity
+  useEffect(() => {
+    const el = reportPanelRef.current;
+    if (!el) return;
+    if (reportOpen) {
+      // First render: make visible but measure natural height
+      el.style.display  = "block";
+      el.style.overflow = "hidden";
+      const h = el.scrollHeight;
+      el.style.maxHeight = "0px";
+      el.style.opacity   = "0";
+      // Force reflow, then animate to full height
+      void el.offsetHeight;
+      el.style.transition = "max-height 0.38s cubic-bezier(0.16,1,0.3,1), opacity 0.28s ease";
+      el.style.maxHeight  = h + "px";
+      el.style.opacity    = "1";
+      // After animation, unlock height so dynamic content (errors etc.) can grow
+      const tid = setTimeout(() => {
+        if (el) { el.style.maxHeight = "none"; el.style.overflow = "visible"; }
+      }, 420);
+      return () => clearTimeout(tid);
+    } else {
+      // Collapse: snapshot current height, then animate to 0
+      const h = el.scrollHeight;
+      el.style.maxHeight  = h + "px";
+      el.style.overflow   = "hidden";
+      void el.offsetHeight;
+      el.style.transition = "max-height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.22s ease";
+      el.style.maxHeight  = "0px";
+      el.style.opacity    = "0";
+      const tid = setTimeout(() => {
+        if (el) el.style.display = "none";
+      }, 340);
+      return () => clearTimeout(tid);
+    }
+  }, [reportOpen]);
 
   const handleVoteSubmit = async () => {
     if (!salary?.id) return;
-    setSubmitting(true); setError(null);
+    setSubmitting(true); setVoteError(null);
     try {
       await submitVote({ salarySubmissionId: salary.id, voteType: vote });
       setSuccessVote(vote);
-      setPhase("success");
-      if (vote === "DOWNVOTE") {
-        setTimeout(() => setPhase("transitioning"), 1800);
-        setTimeout(() => setPhase("report"), 2150);
-      } else {
-        setTimeout(() => onClose(), 2000);
-      }
+      setVotePhase("success");
+      setTimeout(() => { onVoteSuccess?.(); onClose(); }, 2000);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to submit vote. Please try again.");
+      setVoteError(err?.response?.data?.message || "Failed to submit vote. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -480,7 +595,7 @@ const VoteModal = ({ open, onClose, salary }) => {
     setReportSubmitting(true); setReportError(null);
     try {
       await submitReport({ submissionId: salary.id, reason, comment });
-      setPhase("reportSuccess");
+      setReportDone(true);
       setTimeout(() => onClose(), 2200);
     } catch (err) {
       setReportError(err?.response?.data?.message || "Failed to submit report. Please try again.");
@@ -491,47 +606,68 @@ const VoteModal = ({ open, onClose, salary }) => {
 
   if (!salary) return null;
 
-  const isCloseable = phase === "vote" || phase === "report";
-
   return (
-    <Dialog open={open} onClose={isCloseable ? onClose : undefined}
+    <Dialog open={open} onClose={votePhase === "idle" ? onClose : undefined}
       PaperProps={{ style: {
         background: "#0d1117", border: "1px solid rgba(255,255,255,0.09)",
         borderRadius: 16, boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
         minWidth: 380, position: "relative", overflow: "hidden",
+        transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)",
       }}}>
 
       <style>{`
-        @keyframes voteSlideOut  { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(-52px)} }
-        @keyframes reportSlideIn { from{opacity:0;transform:translateX(56px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes rptFlagWave   { 0%{transform:rotate(-18deg) scale(0.3);opacity:0} 45%{transform:rotate(8deg) scale(1.15)} 65%{transform:rotate(-4deg) scale(0.97)} 80%{transform:rotate(2deg)} 100%{transform:rotate(0deg) scale(1);opacity:1} }
-        @keyframes rptRing       { 0%{transform:scale(0.5);opacity:0.6} 100%{transform:scale(2.1);opacity:0} }
-        @keyframes rptTextIn     { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes rptPop1       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-32px,-38px) scale(1);opacity:0} }
-        @keyframes rptPop2       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(32px,-38px) scale(1);opacity:0} }
-        @keyframes rptPop3       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-42px,4px) scale(1);opacity:0} }
-        @keyframes rptPop4       { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(42px,4px) scale(1);opacity:0} }
-        @keyframes rptBarGrow    { from{width:0} to{width:100%} }
-        @keyframes rptSuccessIn  { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+        @keyframes rptFlagWave { 0%{transform:rotate(-18deg) scale(0.3);opacity:0} 45%{transform:rotate(8deg) scale(1.15)} 65%{transform:rotate(-4deg) scale(0.97)} 80%{transform:rotate(2deg)} 100%{transform:rotate(0deg) scale(1);opacity:1} }
+        @keyframes rptRing     { 0%{transform:scale(0.5);opacity:0.6} 100%{transform:scale(2.1);opacity:0} }
+        @keyframes rptTextIn   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes rptPop1     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-32px,-38px) scale(1);opacity:0} }
+        @keyframes rptPop2     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(32px,-38px) scale(1);opacity:0} }
+        @keyframes rptPop3     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(-42px,4px) scale(1);opacity:0} }
+        @keyframes rptPop4     { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(42px,4px) scale(1);opacity:0} }
+        @keyframes rptBarGrow  { from{width:0} to{width:100%} }
+        @keyframes rptSuccessIn{ from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
       `}</style>
 
-      {/* ── VOTE phase ── */}
-      {(phase === "vote" || phase === "success" || phase === "transitioning") && (
-        <div style={{
-          animation: phase === "transitioning" ? "voteSlideOut 0.32s cubic-bezier(0.4,0,1,1) both" : undefined,
-        }}>
-          {(phase === "success" || phase === "transitioning") && (
-            <VoteSuccessOverlay voteType={successVote} />
-          )}
+      {/* ── Vote success overlay ── */}
+      {votePhase === "success" && <VoteSuccessOverlay voteType={successVote} isRemoval={successVote === initialVoteStatus} />}
 
-          <DialogTitle style={{ padding: "24px 28px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 18 }}>
+      {/* ── Header ── */}
+      <DialogTitle style={{ padding: "24px 28px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 18 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div>
             Cast your vote
             <div style={{ fontSize: 13, fontWeight: 400, color: "rgba(232,234,240,0.4)", marginTop: 4, fontFamily: "'DM Sans', sans-serif" }}>
               {salary.company} · {salary.role}
             </div>
-          </DialogTitle>
+          </div>
+        </div>
+      </DialogTitle>
 
-          <DialogContent style={{ padding: "20px 28px 28px" }}>
+      <DialogContent style={{ padding: "20px 28px 28px" }}>
+
+        {/* ── Loading skeleton ── */}
+        {votePhase === "loading" && (
+          <div style={{ marginTop: 8, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              {[0, 1].map((i) => (
+                <div key={i} style={{ flex: 1, height: 48, borderRadius: 10, background: "rgba(255,255,255,0.05)", animation: "skeletonPulse 1.4s ease-in-out infinite", animationDelay: i * 0.15 + "s" }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+              <div style={{ flex: 2, height: 40, borderRadius: 10, background: "rgba(99,102,241,0.1)", animation: "skeletonPulse 1.4s ease-in-out infinite 0.2s" }} />
+            </div>
+            <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "rgba(232,234,240,0.3)", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,0.6)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "filterSpin 0.8s linear infinite" }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+              Loading your vote status…
+            </div>
+          </div>
+        )}
+
+        {/* ── Vote buttons ── */}
+        {votePhase !== "loading" && (
+          <>
             <div style={{ display: "flex", gap: 12, marginBottom: 16, marginTop: 8 }}>
               {["UPVOTE", "DOWNVOTE"].map((v) => (
                 <button key={v} onClick={() => !submitting && setVote(v)}
@@ -543,20 +679,14 @@ const VoteModal = ({ open, onClose, salary }) => {
                     color: vote === v ? (v === "UPVOTE" ? "#34d399" : "#f87171") : "rgba(232,234,240,0.55)",
                     opacity: submitting ? 0.6 : 1,
                   }}>
-                  {v === "UPVOTE" ? "👍 Accurate" : "👎 Inaccurate"}
+                  {v === "UPVOTE" ? "👍 Upvote" : "👎 Downvote"}
                 </button>
               ))}
             </div>
 
-            {vote === "DOWNVOTE" && phase === "vote" && (
-              <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)", color: "rgba(251,146,60,0.8)", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-                ⚑ After voting, you'll have the option to file a report with more details.
-              </div>
-            )}
-
-            {error && (
+            {voteError && (
               <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-                {error}
+                {voteError}
               </div>
             )}
 
@@ -574,61 +704,83 @@ const VoteModal = ({ open, onClose, salary }) => {
                     </svg>
                     Submitting…
                   </>
-                ) : "Submit Vote"}
+                ) : vote === initialVoteStatus ? "Remove Vote" : "Submit Vote"}
               </button>
             </div>
-          </DialogContent>
-        </div>
-      )}
 
-      {/* ── REPORT phase ── */}
-      {(phase === "report" || phase === "reportSuccess") && (
-        <div style={{ animation: phase === "report" ? "reportSlideIn 0.38s cubic-bezier(0.16,1,0.3,1) both" : undefined, position: "relative" }}>
+            {/* Report button — below submit, only when not already done */}
+            {!reportDone && (
+              <button
+                onClick={() => { setReportOpen((v) => !v); setReportError(null); }}
+                style={{
+                  width: "100%", marginTop: 10, padding: "8px 0", borderRadius: 10,
+                  cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+                  fontWeight: 500, transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  background: reportOpen ? "rgba(251,146,60,0.1)" : "transparent",
+                  color: reportOpen ? "#fb923c" : "rgba(232,234,240,0.35)",
+                  border: reportOpen ? "1px solid rgba(251,146,60,0.3)" : "1px solid transparent",
+                }}
+              >
+                <span style={{ fontSize: 12 }}>⚑</span>
+                {reportOpen ? "Hide report" : "Report this entry"}
+              </button>
+            )}
+          </>
+        )}
 
-          {/* Report success overlay */}
-          {phase === "reportSuccess" && (
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: 16, zIndex: 10,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              background: "radial-gradient(ellipse at 50% 55%, rgba(251,146,60,0.12) 0%, #0d1117 70%)",
-              animation: "rptSuccessIn 0.28s cubic-bezier(0.16,1,0.3,1)",
-            }}>
-              <div style={{ position: "relative", width: 110, height: 110, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {[0,1].map(i => <div key={i} style={{ position: "absolute", width: 78, height: 78, borderRadius: "50%", border: "1.5px solid rgba(251,146,60,0.4)", animation: `rptRing 1.3s ease-out ${i*0.28}s infinite`, opacity: 0 }} />)}
-                <div style={{ width: 74, height: 74, borderRadius: "50%", zIndex: 1, position: "relative", background: "rgba(251,146,60,0.12)", border: "1.5px solid rgba(251,146,60,0.4)", boxShadow: "0 0 28px rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, animation: "rptFlagWave 0.6s cubic-bezier(.36,.07,.19,.97) both" }}>⚑</div>
-                {["✦","✦","✧","✦"].map((p,i) => <div key={i} style={{ position: "absolute", fontSize: 8, color: i%2===0?"#fb923c":"#fcd34d", animation: `rptPop${i+1} 0.65s ease-out 0.2s forwards`, opacity: 0 }}>{p}</div>)}
+        {/* ── Report panel — always rendered, height animated via ref ── */}
+        <div
+          ref={reportPanelRef}
+          style={{ display: "none", overflow: "hidden", maxHeight: 0, opacity: 0 }}
+        >
+          {/* inner wrapper gives the panel its padding + border */}
+          <div style={{
+            marginTop: 20,
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+            paddingTop: 18,
+            position: "relative",
+          }}>
+
+            {/* Report success overlay */}
+            {reportDone && (
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: 12, zIndex: 10,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                background: "radial-gradient(ellipse at 50% 55%, rgba(251,146,60,0.14) 0%, rgba(13,17,23,0.98) 70%)",
+                animation: "rptSuccessIn 0.28s cubic-bezier(0.16,1,0.3,1)",
+              }}>
+                <div style={{ position: "relative", width: 90, height: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {[0,1].map(i => <div key={i} style={{ position: "absolute", width: 68, height: 68, borderRadius: "50%", border: "1.5px solid rgba(251,146,60,0.4)", animation: `rptRing 1.3s ease-out ${i*0.28}s infinite`, opacity: 0 }} />)}
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", zIndex: 1, position: "relative", background: "rgba(251,146,60,0.12)", border: "1.5px solid rgba(251,146,60,0.4)", boxShadow: "0 0 24px rgba(251,146,60,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, animation: "rptFlagWave 0.6s cubic-bezier(.36,.07,.19,.97) both" }}>⚑</div>
+                  {["✦","✦","✧","✦"].map((p,i) => <div key={i} style={{ position: "absolute", fontSize: 8, color: i%2===0?"#fb923c":"#fcd34d", animation: `rptPop${i+1} 0.65s ease-out 0.2s forwards`, opacity: 0 }}>{p}</div>)}
+                </div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "#fb923c", marginTop: 14, animation: "rptTextIn 0.38s ease-out 0.22s both" }}>Report submitted</div>
+                <div style={{ fontSize: 12, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", marginTop: 4, animation: "rptTextIn 0.38s ease-out 0.32s both" }}>We'll review this entry soon</div>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, overflow: "hidden", borderRadius: "0 0 12px 12px" }}>
+                  <div style={{ height: "100%", background: "linear-gradient(90deg, #fb923c, #fcd34d)", animation: "rptBarGrow 2s linear 0.15s both" }} />
+                </div>
               </div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 18, color: "#fb923c", marginTop: 20, animation: "rptTextIn 0.38s ease-out 0.22s both" }}>Report submitted</div>
-              <div style={{ fontSize: 13, color: "rgba(232,234,240,0.4)", fontFamily: "'DM Sans', sans-serif", marginTop: 6, animation: "rptTextIn 0.38s ease-out 0.32s both" }}>We'll review this entry soon</div>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, overflow: "hidden", borderRadius: "0 0 16px 16px" }}>
-                <div style={{ height: "100%", background: "linear-gradient(90deg, #fb923c, #fcd34d)", animation: "rptBarGrow 2s linear 0.15s both" }} />
-              </div>
-            </div>
-          )}
+            )}
 
-          <DialogTitle style={{ padding: "22px 24px 0", fontFamily: "'Syne', sans-serif", fontWeight: 700, color: "#f1f5f9", fontSize: 17 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 15 }}>⚑</span> Report entry
-              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 500, color: "rgba(251,146,60,0.65)", background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 99, padding: "2px 9px", letterSpacing: "0.04em" }}>
-                after inaccurate vote
-              </span>
+            {/* Report header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+              <span style={{ fontSize: 14 }}>⚑</span>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#fb923c" }}>Report this entry</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(251,146,60,0.55)", background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)", borderRadius: 99, padding: "2px 8px" }}>optional</span>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 400, color: "rgba(232,234,240,0.35)", marginTop: 4, fontFamily: "'DM Sans', sans-serif" }}>
-              {salary.company} · {salary.role}
-            </div>
-          </DialogTitle>
 
-          <DialogContent style={{ padding: "16px 24px 24px" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 10 }}>
+            {/* Reason */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
               Reason <span style={{ color: "#f87171" }}>*</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 18 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
               {REPORT_REASONS.map((r) => {
                 const selected = reason === r;
                 return (
                   <button key={r} onClick={() => { setReason(r); setReportError(null); }}
                     style={{
-                      textAlign: "left", padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                      textAlign: "left", padding: "9px 13px", borderRadius: 9, cursor: "pointer",
                       fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: selected ? 600 : 400,
                       transition: "all 0.13s",
                       border: `1px solid ${selected ? "rgba(251,146,60,0.5)" : "rgba(255,255,255,0.07)"}`,
@@ -636,8 +788,8 @@ const VoteModal = ({ open, onClose, salary }) => {
                       color: selected ? "#fb923c" : "rgba(232,234,240,0.65)",
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
-                    <span style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selected ? "#fb923c" : "rgba(255,255,255,0.2)"}`, background: selected ? "#fb923c" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.13s" }}>
-                      {selected && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0d1117", display: "block" }} />}
+                    <span style={{ width: 15, height: 15, borderRadius: "50%", flexShrink: 0, border: `2px solid ${selected ? "#fb923c" : "rgba(255,255,255,0.2)"}`, background: selected ? "#fb923c" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.13s" }}>
+                      {selected && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#0d1117", display: "block" }} />}
                     </span>
                     {r}
                   </button>
@@ -645,7 +797,8 @@ const VoteModal = ({ open, onClose, salary }) => {
               })}
             </div>
 
-            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 8 }}>
+            {/* Comment */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(232,234,240,0.4)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 7 }}>
               Additional comment <span style={{ color: "rgba(232,234,240,0.25)", textTransform: "none", fontWeight: 400, letterSpacing: 0 }}> — optional</span>
             </div>
             <textarea
@@ -656,29 +809,29 @@ const VoteModal = ({ open, onClose, salary }) => {
               placeholder="Any extra details that might help our review…"
               maxLength={400} rows={3}
               style={{
-                width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 10, resize: "none",
+                width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 9, resize: "none",
                 background: commentFocused ? "rgba(251,146,60,0.06)" : "rgba(255,255,255,0.03)",
                 border: `1px solid ${commentFocused ? "rgba(251,146,60,0.4)" : "rgba(255,255,255,0.08)"}`,
                 color: "#f1f5f9", fontSize: 13, fontFamily: "'DM Sans', sans-serif",
                 outline: "none", transition: "all 0.15s", marginBottom: 4,
               }}
             />
-            <div style={{ fontSize: 11, color: "rgba(232,234,240,0.25)", textAlign: "right", marginBottom: 18 }}>{comment.length}/400</div>
+            <div style={{ fontSize: 11, color: "rgba(232,234,240,0.25)", textAlign: "right", marginBottom: 14 }}>{comment.length}/400</div>
 
             {reportError && (
-              <div style={{ marginBottom: 14, padding: "9px 13px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              <div style={{ marginBottom: 12, padding: "9px 13px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
                 {reportError}
               </div>
             )}
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={onClose} disabled={reportSubmitting}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 10, cursor: reportSubmitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: "rgba(255,255,255,0.04)", color: "rgba(232,234,240,0.55)", border: "1px solid rgba(255,255,255,0.07)", opacity: reportSubmitting ? 0.5 : 1 }}>
-                Skip
+              <button onClick={() => { setReportOpen(false); setReason(""); setComment(""); setReportError(null); }} disabled={reportSubmitting}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 9, cursor: reportSubmitting ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: "rgba(255,255,255,0.04)", color: "rgba(232,234,240,0.5)", border: "1px solid rgba(255,255,255,0.07)", opacity: reportSubmitting ? 0.5 : 1 }}>
+                Cancel
               </button>
               <button onClick={handleReportSubmit} disabled={reportSubmitting || !reason}
                 style={{
-                  flex: 2, padding: "10px 0", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
+                  flex: 2, padding: "9px 0", borderRadius: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
                   cursor: reportSubmitting || !reason ? "not-allowed" : "pointer",
                   background: !reason ? "rgba(255,255,255,0.04)" : reportSubmitting ? "rgba(251,146,60,0.3)" : "linear-gradient(135deg, #fb923c, #f97316)",
                   color: !reason ? "rgba(232,234,240,0.3)" : "#fff",
@@ -697,12 +850,14 @@ const VoteModal = ({ open, onClose, salary }) => {
                 ) : "Submit Report"}
               </button>
             </div>
-          </DialogContent>
-        </div>
-      )}
+          </div>{/* end report panel inner */}
+        </div>{/* end report panel animated wrapper */}
+
+      </DialogContent>
     </Dialog>
   );
 };
+
 
 /* ── Main component ── */
 function SalaryTable({ isLoggedIn }) {
@@ -723,7 +878,8 @@ function SalaryTable({ isLoggedIn }) {
 
   // API state
   const [salaries, setSalaries]         = useState([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading]           = useState(true);   // initial / filter load → full skeleton
+  const [reloading, setReloading]       = useState(false);  // background reload → overlay spinner
   const [error, setError]               = useState(null);
   const [currentPage, setCurrentPage]   = useState(0);
   const [totalPages, setTotalPages]     = useState(0);
@@ -749,8 +905,12 @@ function SalaryTable({ isLoggedIn }) {
   }, []);
 
   const loadSalaries = useCallback(
-    async (page) => {
-      setLoading(true);
+    async (page, { background = false } = {}) => {
+      if (background) {
+        setReloading(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         const params = { page, pageSize: 10 };
@@ -772,6 +932,7 @@ function SalaryTable({ isLoggedIn }) {
         setSalaries([]);
       } finally {
         setLoading(false);
+        setReloading(false);
       }
     },
     [selectedCountries, selectedCompanies, selectedRoles, selectedLevels]
@@ -788,7 +949,7 @@ function SalaryTable({ isLoggedIn }) {
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    loadSalaries(newPage);
+    loadSalaries(newPage, { background: true });
   };
 
   const handleOpenVote = (s) => {
@@ -801,7 +962,7 @@ function SalaryTable({ isLoggedIn }) {
 
   const handleSubmissionClose = () => {
     setOpenSubmission(false);
-    loadSalaries(0);
+    loadSalaries(0, { background: true });
   };
 
   const isFiltering = selectedCountries.length > 0 || selectedCompanies.length > 0 || selectedRoles.length > 0 || selectedLevels.length > 0;
@@ -818,6 +979,7 @@ function SalaryTable({ isLoggedIn }) {
             <div style={S.tableTitle}>Latest Submissions</div>
             <div style={S.tableSubtitle}>
               {loading ? "Loading…"
+                : reloading ? totalCount + " entries · updating…"
                 : error ? "Error loading data"
                 : isFiltering ? totalCount + " result" + (totalCount !== 1 ? "s" : "") + " found"
                 : totalCount + " entries · page " + (currentPage + 1) + " of " + totalPages}
@@ -847,8 +1009,7 @@ function SalaryTable({ isLoggedIn }) {
             tags={selectedCompanies}
             onChange={setSelectedCompanies}
           />
-          <TagInput
-            label="Role"
+          <RoleTagAutocomplete
             icon="💼"
             tags={selectedRoles}
             onChange={setSelectedRoles}
@@ -897,11 +1058,38 @@ function SalaryTable({ isLoggedIn }) {
         </div>
 
         {/* Table */}
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", position: "relative" }}>
+
+          {/* ── Background reload overlay ── */}
+          {reloading && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 10,
+              background: "rgba(8,11,18,0.55)",
+              backdropFilter: "blur(2px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 4,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 18px", borderRadius: 12,
+                background: "rgba(13,17,23,0.92)",
+                border: "1px solid rgba(99,102,241,0.25)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" strokeWidth="2.5" strokeLinecap="round"
+                  style={{ animation: "filterSpin 0.75s linear infinite", flexShrink: 0 }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(232,234,240,0.7)", fontFamily: "'DM Sans', sans-serif" }}>
+                  Updating…
+                </span>
+              </div>
+            </div>
+          )}
           <table style={S.table}>
             <thead>
               <tr>
-                {["Company", "Role", "Country", "Level", "Salary", "Date", ""].map((h) => (
+                {["Company", "Role", "Country", "Level", "Salary", "Date", "Votes", ""].map((h) => (
                   <th key={h} style={S.th}>{h}</th>
                 ))}
               </tr>
@@ -914,7 +1102,7 @@ function SalaryTable({ isLoggedIn }) {
               {/* Error */}
               {!loading && error && (
                 <tr>
-                  <td colSpan={7} style={{ padding: "52px 24px", textAlign: "center" }}>
+                  <td colSpan={8} style={{ padding: "52px 24px", textAlign: "center" }}>
                     <div style={{ fontSize: 28, marginBottom: 10 }}>⚠️</div>
                     <div style={{ color: "#f87171", fontSize: 14, marginBottom: 12 }}>{error}</div>
                     <button onClick={() => loadSalaries(currentPage)}
@@ -928,7 +1116,7 @@ function SalaryTable({ isLoggedIn }) {
               {/* Empty */}
               {!loading && !error && salaries.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: "52px 24px", textAlign: "center", color: "rgba(232,234,240,0.3)", fontSize: 14 }}>
+                  <td colSpan={8} style={{ padding: "52px 24px", textAlign: "center", color: "rgba(232,234,240,0.3)", fontSize: 14 }}>
                     <div style={{ fontSize: 30, marginBottom: 10 }}>🔍</div>
                     {isFiltering
                       ? "No results found. Try a different filter."
@@ -969,6 +1157,28 @@ function SalaryTable({ isLoggedIn }) {
                   <td style={{ ...S.td, fontSize: 12, color: "rgba(232,234,240,0.35)", whiteSpace: "nowrap" }}>
                     {formatDate(row.submittedAt)}
                   </td>
+                  {/* ── Vote counts ── */}
+                  <td style={{ ...S.td, whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {/* Upvote pill */}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 99, background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.18)", color: "#34d399", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+                          <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                        </svg>
+                        {row.upvoteCount ?? 0}
+                      </span>
+                      {/* Downvote pill */}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 99, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)", color: "#f87171", fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
+                          <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+                        </svg>
+                        {row.downvoteCount ?? 0}
+                      </span>
+                    </div>
+                  </td>
+                  {/* ── Vote action button ── */}
                   <td style={{ ...S.td, textAlign: "right" }}>
                     <button onClick={() => handleOpenVote(row)} disabled={!isLoggedIn}
                       style={{ padding: "7px 14px", borderRadius: 8, cursor: isLoggedIn ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500, background: isLoggedIn ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.04)", color: isLoggedIn ? "#a5b4fc" : "rgba(232,234,240,0.3)", border: "1px solid " + (isLoggedIn ? "rgba(99,102,241,0.25)" : "rgba(255,255,255,0.06)"), transition: "all 0.15s", opacity: isLoggedIn ? 1 : 0.5 }}
@@ -1001,7 +1211,7 @@ function SalaryTable({ isLoggedIn }) {
           </DialogContent>
         </Dialog>
 
-        <VoteModal open={openVote} onClose={() => setOpenVote(false)} salary={selectedSalary} />
+        <VoteModal open={openVote} onClose={() => setOpenVote(false)} salary={selectedSalary} onVoteSuccess={() => loadSalaries(currentPage, { background: true })} />
       </div>
     </>
   );
