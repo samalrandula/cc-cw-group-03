@@ -32,6 +32,7 @@ public interface SalaryRepository extends JpaRepository<Salary, Integer> {
     VoteCountProjection findVoteCountBySalaryId(@Param("salaryId") Integer salaryId);
 
     @Query("SELECT s FROM Salary s WHERE " +
+            "s.status = lk.zalary.search_service.entity.SalaryStatus.APPROVED AND " +
             "CASE WHEN :countries IS NULL THEN true ELSE s.country IN :countries END AND " +
             "CASE WHEN :companies IS NULL THEN true ELSE s.company IN :companies END AND " +
             "CASE WHEN :roles IS NULL THEN true ELSE s.role IN :roles END AND " +
@@ -48,15 +49,15 @@ public interface SalaryRepository extends JpaRepository<Salary, Integer> {
             Pageable pageable
     );
 
-    @Query("SELECT DISTINCT s.country FROM Salary s ORDER BY s.country")
+    @Query("SELECT DISTINCT s.country FROM Salary s WHERE s.status = lk.zalary.search_service.entity.SalaryStatus.APPROVED ORDER BY s.country")
     List<String> findDistinctCountries();
 
-    @Query("SELECT DISTINCT s.company FROM Salary s ORDER BY s.company")
+    @Query("SELECT DISTINCT s.company FROM Salary s WHERE s.status = lk.zalary.search_service.entity.SalaryStatus.APPROVED ORDER BY s.company")
     List<String> findDistinctCompanies();
 
-    @Query("SELECT DISTINCT s.role FROM Salary s ORDER BY s.role")
+    @Query("SELECT DISTINCT s.role FROM Salary s WHERE s.status = lk.zalary.search_service.entity.SalaryStatus.APPROVED ORDER BY s.role")
     List<String> findDistinctRoles();
 
-    @Query("SELECT DISTINCT s.experienceLevel FROM Salary s ORDER BY s.experienceLevel")
+    @Query("SELECT DISTINCT s.experienceLevel FROM Salary s WHERE s.status = lk.zalary.search_service.entity.SalaryStatus.APPROVED ORDER BY s.experienceLevel")
     List<ExperienceLevel> findDistinctExperienceLevels();
 }

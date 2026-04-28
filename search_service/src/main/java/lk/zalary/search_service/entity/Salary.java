@@ -49,4 +49,8 @@ public class Salary {
 
     @Column(nullable = false)
     private Boolean anonymize = false;
+
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "salary_status_enum")
+    private SalaryStatus status;
 }
