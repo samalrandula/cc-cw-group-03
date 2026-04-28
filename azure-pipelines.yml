@@ -40,6 +40,23 @@ stages:
                 latest
                 $(Build.BuildId)
 
+          # BFF Tests
+          - script: |
+              docker run --rm \
+                -v $(pwd)/bff_service:/app \
+                -w /app \
+                gradle:8.7-jdk21 \
+                ./gradlew test
+            displayName: 'Run BFF Unit Tests'
+
+          - task: PublishTestResults@2
+            displayName: 'Publish BFF Test Results'
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'bff_service/build/test-results/test/*.xml'
+              failTaskOnFailedTests: true
+
+          # BFF
           - task: Docker@2
             displayName: Build and Push bff-service
             inputs:
