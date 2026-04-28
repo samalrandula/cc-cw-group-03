@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: search-service
-          image: samalrandula/search-service:latest
+          image: sahanr94/search-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: vote-service
-          image: samalrandula/vote-service:latest
+          image: sahanr94/vote-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8083

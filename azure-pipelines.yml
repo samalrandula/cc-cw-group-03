@@ -4,7 +4,7 @@ trigger:
 pr: none
 
 variables:
-  DOCKER_REGISTRY: samalrandula
+  DOCKER_REGISTRY: sahanr94
   K8S_NAMESPACE_APP: app
   K8S_NAMESPACE_DATA: data
   AZURE_SERVICE_CONNECTION: azure-aks-connection

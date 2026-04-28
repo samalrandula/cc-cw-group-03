@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: stats-service
-          image: samalrandula/stats-service:latest
+          image: sahanr94/stats-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8085

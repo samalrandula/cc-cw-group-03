@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: identity-service
-          image: samalrandula/identity-service:latest
+          image: sahanr94/identity-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8086
