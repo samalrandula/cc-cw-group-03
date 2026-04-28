@@ -14,7 +14,7 @@ variables:
   namespaceApp: app
 
 pool:
-  vmImage: Default
+  name: Default
 
 steps:
   - checkout: self
