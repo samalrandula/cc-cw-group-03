@@ -8,7 +8,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "votes", schema = "zalary")
+@Table(name = "votes")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
