@@ -1,0 +1,27 @@
+#  Build the application
+FROM gradle:8.7-jdk21 AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy the Gradle wrapper and build files
+COPY gradle gradle
+COPY gradlew .
+COPY build.gradle .
+COPY settings.gradle .
+COPY . .
+
+# Build the jar
+RUN ./gradlew clean build
+
+# Use lightweight Java runtime
+FROM eclipse-temurin:21-jre-alpine
+
+# Copy jar file into container
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# Expose application port
+EXPOSE 8081
+
+# Run application
+ENTRYPOINT ["java", "-jar", "app.jar"]

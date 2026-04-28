@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+      http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Include SQL files -->
+    <include file="db/changelog/changes/create_tables.sql"/>
+    <include file="db/changelog/changes/add_admin_rejected_to_salary_status_enum.sql"/>
+    <include file="db/changelog/changes/demote_flagged_submissions.sql"/>
+
+</databaseChangeLog>

@@ -1,0 +1,195 @@
+trigger:
+  - main
+
+pr: none
+
+variables:
+  DOCKER_REGISTRY: samalrandula
+  K8S_NAMESPACE_APP: app
+  K8S_NAMESPACE_DATA: data
+  AZURE_SERVICE_CONNECTION: azure-aks-connection
+  RESOURCE_GROUP: cc-cw-group-03
+  AKS_CLUSTER: zalaryCluster
+
+pool:
+  name: Default
+
+stages:
+  - stage: Build
+    displayName: Build and Push Images
+    jobs:
+      - job: BuildPush
+        displayName: Docker Build and Push
+        steps:
+          - checkout: self
+
+          - task: Docker@2
+            displayName: Login to Docker Hub
+            inputs:
+              command: login
+              containerRegistry: dockerhub-connection
+
+          - task: Docker@2
+            displayName: Build and Push salary-submission-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/salary-submission-service
+              dockerfile: salary_submission_service/dockerfile
+              buildContext: salary_submission_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push bff-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/bff-service
+              dockerfile: bff_service/dockerfile
+              buildContext: bff_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push vote-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/vote-service
+              dockerfile: vote_service/dockerfile
+              buildContext: vote_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push search-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/search-service
+              dockerfile: search_service/dockerfile
+              buildContext: search_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push stats-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/stats-service
+              dockerfile: stats_service/dockerfile
+              buildContext: stats_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push identity-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/identity-service
+              dockerfile: identity_service/dockerfile
+              buildContext: identity_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push report-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/report-service
+              dockerfile: report_service/dockerfile
+              buildContext: report_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+          - task: Docker@2
+            displayName: Build and Push frontend-service
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_REGISTRY)/frontend-service
+              dockerfile: frontend_service/dockerfile
+              buildContext: frontend_service
+              tags: |
+                latest
+                $(Build.BuildId)
+
+  - stage: Deploy
+    displayName: Deploy to AKS
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: DeployToAks
+        displayName: AKS Deploy
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: Connect to AKS
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az aks get-credentials --resource-group $(RESOURCE_GROUP) --name $(AKS_CLUSTER) --admin --overwrite-existing
+                kubectl get nodes
+
+          - task: AzureCLI@2
+            displayName: Apply Kubernetes manifests
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az aks get-credentials --resource-group $(RESOURCE_GROUP) --name $(AKS_CLUSTER) --admin --overwrite-existing
+                kubectl apply -f k8s/namespaces/
+                kubectl apply -f k8s/postgres/
+                kubectl apply -f k8s/configmaps/
+                kubectl apply -f k8s/secrets/
+                kubectl apply -f k8s/services/
+                kubectl apply -f k8s/deployments/
+                kubectl apply -f k8s/ingress/
+
+          - task: AzureCLI@2
+            displayName: Update deployment images
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az aks get-credentials --resource-group $(RESOURCE_GROUP) --name $(AKS_CLUSTER) --admin --overwrite-existing
+
+                kubectl set image deployment/salary-submission-service salary-submission-service=$(DOCKER_REGISTRY)/salary-submission-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/bff-service bff-service=$(DOCKER_REGISTRY)/bff-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/vote-service vote-service=$(DOCKER_REGISTRY)/vote-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/search-service search-service=$(DOCKER_REGISTRY)/search-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/stats-service stats-service=$(DOCKER_REGISTRY)/stats-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/identity-service identity-service=$(DOCKER_REGISTRY)/identity-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/report-service report-service=$(DOCKER_REGISTRY)/report-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+                kubectl set image deployment/frontend-service frontend-service=$(DOCKER_REGISTRY)/frontend-service:$(Build.BuildId) -n $(K8S_NAMESPACE_APP)
+
+          - task: AzureCLI@2
+            displayName: Verify rollout
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az aks get-credentials --resource-group $(RESOURCE_GROUP) --name $(AKS_CLUSTER) --admin --overwrite-existing
+
+                kubectl rollout status deployment/salary-submission-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/bff-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/vote-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/search-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/stats-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/identity-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/report-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+                kubectl rollout status deployment/frontend-service -n $(K8S_NAMESPACE_APP) --timeout=300s
+
+                kubectl get pods -n $(K8S_NAMESPACE_APP)
+                kubectl get pods -n $(K8S_NAMESPACE_DATA)
+                kubectl get svc -n $(K8S_NAMESPACE_APP)
+                kubectl get ingress -n $(K8S_NAMESPACE_APP)
