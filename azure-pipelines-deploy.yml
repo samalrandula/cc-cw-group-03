@@ -14,7 +14,7 @@ variables:
   namespaceApp: app
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: Default
 
 steps:
   - checkout: self
