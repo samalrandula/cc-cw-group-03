@@ -121,6 +121,21 @@ stages:
                 latest
                 $(Build.BuildId)
 
+          # BFF Tests
+          - script: |
+              cd bff_service
+              ./gradlew test
+            displayName: 'Run BFF Unit Tests'
+            condition: eq(variables['detectChanges.bffChanged'], 'true')
+
+          - task: PublishTestResults@2
+            displayName: 'Publish BFF Test Results'
+            condition: eq(variables['detectChanges.bffChanged'], 'true')
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'bff_service/build/test-results/test/*.xml'
+              failTaskOnFailedTests: true
+
           # BFF
           - task: Docker@2
             displayName: 'Build & Push bff-service'
