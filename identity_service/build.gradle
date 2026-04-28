@@ -6,10 +6,11 @@ plugins {
 
 group = 'lk.zalary'
 version = '0.0.1-SNAPSHOT'
-description = 'Demo project for Spring Boot'
+description = 'The BFF service acts as the single entry point for the frontend.'
 
 java {
 	toolchain {
+		// Use Java 17, which you have installed locally
 		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
@@ -27,8 +28,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-	implementation 'org.liquibase:liquibase-core'
-	implementation 'org.springframework.boot:spring-boot-starter-liquibase'
 	runtimeOnly 'org.postgresql:postgresql'
 	testRuntimeOnly 'com.h2database:h2'
 
@@ -42,6 +41,8 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 tasks.named('test') {

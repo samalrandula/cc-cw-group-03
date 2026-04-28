@@ -52,7 +52,9 @@ public class ForwardingServiceImpl implements ForwardingService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<T> entity = new HttpEntity<>(requestBody, headers);
+            HttpEntity<T> entity = requestBody != null
+                    ? new HttpEntity<>(requestBody, headers)
+                    : new HttpEntity<>(headers);
 
             ResponseEntity<R> response = restTemplate.exchange(
                     getUrl(serviceNames) + path,

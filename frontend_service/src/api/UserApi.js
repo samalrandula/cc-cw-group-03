@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = window.env.VITE_API_BASE_URL;
 
 // Store token in memory (also persisted to sessionStorage for page refresh)
 let authToken = sessionStorage.getItem("zalary_token") || null;

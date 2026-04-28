@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@mui/material";
-import { signup, login } from "../api/userApi";
+import { signup, login } from "../api/UserApi";
 
 /* ── shared field input ── */
 const Field = ({ label, name, type = "text", value, onChange, placeholder, error }) => {

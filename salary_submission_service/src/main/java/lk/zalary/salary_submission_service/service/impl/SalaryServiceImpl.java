@@ -66,7 +66,7 @@ public class SalaryServiceImpl implements SalaryService {
 
         submission.setStatus(status);
         salaryRepository.save(submission);
-        
+
         log.info("Updated salary submission {} to status {}", salarySubmissionId, status);
     }
 

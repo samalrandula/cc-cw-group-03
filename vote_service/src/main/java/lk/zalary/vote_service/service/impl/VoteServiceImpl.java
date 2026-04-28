@@ -44,7 +44,7 @@ public class VoteServiceImpl implements VoteService {
         }
         
         int userId = request.getUserId().intValue();
-        int submissionId = request.getSubmissionId().intValue();
+        int submissionId = request.getSalarySubmissionId().intValue();
 
         Optional<Vote> existingVote = voteRepository.findByUserIdAndSalarySubmissionId(
             userId,

@@ -65,7 +65,7 @@ public class SalarySubmissionController {
         try {
             SalaryStatus salaryStatus = SalaryStatus.valueOf(status.toUpperCase());
             salaryService.updateStatus(id, salaryStatus);
-            
+
             return ResponseEntity.ok(Map.of(
                 "message", "Status updated successfully",
                 "submissionId", id,

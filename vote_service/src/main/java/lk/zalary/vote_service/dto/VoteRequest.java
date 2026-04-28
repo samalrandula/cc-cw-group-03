@@ -13,8 +13,8 @@ public class VoteRequest {
     @NotNull(message = "User ID is required")
     private Long userId;
 
-    @NotNull(message = "Submission ID is required")
-    private Long submissionId;
+    @NotNull(message = "Salary submission ID is required")
+    private Long salarySubmissionId;
 
     @NotNull(message = "Vote type is required")
     private VoteType voteType;

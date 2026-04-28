@@ -128,7 +128,40 @@ public class BffController {
                 request,
                 ServiceNames.VOTE_SERVICE,
                 HttpMethod.POST,
-                "/vote",
+                "/api/vote",
+                Object.class
+        );
+    }
+
+    /**
+     * Vote on Submission - Forward to Vote Service
+     */
+    @GetMapping("/submission/{salarySubmissionId}")
+    public ResponseEntity<?> vote(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable Integer salarySubmissionId
+    ) {
+
+        // ENFORCE AUTHENTICATION
+        if (authHeader == null || authHeader.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Authentication required. Please log in to vote."));
+        }
+
+        // VALIDATE TOKEN AND GET USER_ID
+        Long userId = authenticationService.validateTokenAndGetUserId(authHeader);
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid or expired token. Please log in again."));
+        }
+
+        // FORWARD TO VOTE SERVICE
+        return forwardingService.forward(
+                null,
+                ServiceNames.VOTE_SERVICE,
+                HttpMethod.GET,
+                "/api/vote/submission/" + salarySubmissionId + "/user/" + userId,
                 Object.class
         );
     }

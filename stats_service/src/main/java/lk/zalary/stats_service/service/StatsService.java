@@ -55,7 +55,7 @@ public class StatsService {
                             role,
                             experienceLevel
                     );
-        
+
         } else if (location != null && experienceLevel != null) {
 
             salaries = salaryRepository
@@ -105,7 +105,7 @@ public class StatsService {
                 .toList();
 
         int count = sortedSalaries.size();
-        
+
         // Basic Stats
         BigDecimal total = sortedSalaries.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         double average = total.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP).doubleValue();
@@ -146,7 +146,7 @@ public class StatsService {
                 .percentiles(percentiles)
                 .experienceBreakdown(breakdown)
                 .build();
-        
+
     }
 
     private double calculatePercentile(List<BigDecimal> sortedData, double percentile) {
