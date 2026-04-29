@@ -1,321 +1,341 @@
-# Salary Insights Platform
+# BFF Service - API Documentation
 
-## API Documentation
+The BFF (Backend for Frontend) is the **single entry point** for all client requests. It validates JWTs with the identity service, injects `userId` into downstream calls, and proxies requests to the appropriate microservice. Clients never call internal services directly.
 
-This project consists of multiple microservices that work together to collect, validate, vote on, search, and analyze salary submissions.
-
-Services:
-
-* Identity Service
-* Salary Submission Service
-* Vote Service
-* Search Service
-* Stats Service
-
----
-# Identity Service
-
-Base URL: `http://localhost:8081`
-
-The Identity Service handles **user registration, authentication, and token validation** using JWT tokens.
+**Default local base URL:** `http://localhost:8082`
 
 ---
 
-## User Signup
+## Authentication
 
-**POST /signup**
+Endpoints marked **Auth required** expect:
 
-Authentication: Not Required
-
-### Request
-
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
+```
+Authorization: Bearer <jwt>
 ```
 
-### Response (201 Created)
+The BFF validates the token by calling `GET /validate-token` on the identity service. If the token is missing, malformed, or invalid the BFF returns **401**:
 
 ```json
-{
-  "message": "User registered successfully",
-  "userId": 123
-}
+{ "error": "Unauthorized" }
 ```
 
-### Errors
-
-| Status          | Description              |
-| --------------- | ------------------------ |
-| 409 Conflict    | Email already registered |
-| 400 Bad Request | Validation failed        |
+After successful validation the BFF sets `userId` on the downstream request body — clients do **not** send `userId` themselves.
 
 ---
 
-## User Login
+## POST /signup
 
-**POST /login**
+Registers a new user. Proxied to the identity service.
 
-Authentication: Not Required
+**Auth required:** No
 
-### Request
-
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-### Response (200 OK)
+**Request body:**
 
 ```json
 {
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9...",
-  "userId": 123
+    "email": "user@example.com",
+    "password": "password123"
 }
 ```
 
-### Errors
+| Field | Type | Validation |
+|-------|------|------------|
+| `email` | string | valid email, required |
+| `password` | string | 8–128 characters, required |
 
-| Status           | Description         |
-| ---------------- | ------------------- |
+### Success response (201 Created)
+
+```json
+{
+    "message": "User registered successfully",
+    "userId": 1
+}
+```
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| 409 Conflict | Email already registered |
+| 400 Bad Request | Validation failure |
+
+---
+
+## POST /login
+
+Authenticates a user and returns a JWT. Proxied to the identity service.
+
+**Auth required:** No
+
+**Request body:**
+
+```json
+{
+    "email": "user@example.com",
+    "password": "password123"
+}
+```
+
+### Success response (200 OK)
+
+```json
+{
+    "message": "Login successful",
+    "token": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9...",
+    "userId": 1
+}
+```
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
 | 401 Unauthorized | Invalid credentials |
+| 400 Bad Request | Validation failure |
 
 ---
 
-## Validate Token
+## POST /submit
 
-**GET /validate-token**
+Submits a salary entry. Proxied to the salary submission service.
 
-Authentication: **Required (Bearer Token)**
+**Auth required:** No
 
-### Headers
-
-```
-Authorization: Bearer <token>
-```
-
-### Response (200 OK)
+**Request body:**
 
 ```json
 {
-  "valid": true,
-  "userId": 123
+    "company": "Tech Corp",
+    "country": "Sri Lanka",
+    "role": "Software Engineer",
+    "salary": 120000,
+    "yearsOfExperience": 3,
+    "experienceLevel": "MID",
+    "currency": "LKR",
+    "anonymize": false
 }
 ```
 
-### Errors
+| Field | Type | Validation |
+|-------|------|------------|
+| `company` | string | required |
+| `country` | string | required |
+| `role` | string | required |
+| `salary` | number | required, > 0 |
+| `yearsOfExperience` | integer | required, ≥ 0 |
+| `experienceLevel` | string | required — `INTERN`, `JUNIOR`, `MID`, `SENIOR`, `LEAD` |
+| `currency` | string | optional |
+| `anonymize` | boolean | optional, defaults to `false` |
 
-| Status           | Description              |
-| ---------------- | ------------------------ |
-| 401 Unauthorized | Invalid or expired token |
+### Success response (201 Created)
+
+```json
+{
+    "id": 5,
+    "message": "Submission successful"
+}
+```
+
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| 400 Bad Request | Validation failure |
 
 ---
 
-# Salary Submission Service
+## POST /vote
 
-Base URL: `http://localhost:8082`
+Casts or toggles a vote on a salary submission. Proxied to the vote service. The BFF injects `userId` from the validated token.
 
-## Submit Salary
+**Auth required:** Yes
 
-**POST /submit**
-
-Authentication: Not required
-
-### Request
+**Request body:**
 
 ```json
 {
-  "company": "Tech Corp",
-  "country": "Sri Lanka",
-  "role": "Software Engineer",
-  "salary": 120000.00,
-  "yearsOfExperience": 3,
-  "experienceLevel": "Mid",
-  "currency": "LKR",
-  "anonymize": false
+    "salarySubmissionId": 5,
+    "voteType": "UPVOTE"
 }
 ```
 
-### Response
+| Field | Type | Validation |
+|-------|------|------------|
+| `salarySubmissionId` | long | required |
+| `voteType` | string | `UPVOTE` or `DOWNVOTE` |
 
-```json
-{
-  "message": "Salary submitted successfully",
-  "submissionId": 456,
-  "status": "PENDING"
-}
-```
+### Success responses (200 OK)
 
-### Notes
+See the [vote service documentation](../vote_service/README.md) for the full set of success and error response shapes.
 
-* Status is always stored as **PENDING**
-* No user identity should be stored
+### Error responses
+
+| Status | Description |
+|--------|-------------|
+| 401 Unauthorized | Missing or invalid token |
+| 400 Bad Request | Validation failure |
 
 ---
 
-# Vote Service
+## GET /submission/{salarySubmissionId}
 
-Base URL: `http://localhost:8083`
+Returns the current vote status for the authenticated user on a given submission. Proxied to the vote service.
 
-## Vote
+**Auth required:** Yes
 
-**POST /vote**
+**Path parameters:**
 
-### Request
+- `salarySubmissionId` (integer) — ID of the salary submission.
+
+**Headers:** `Authorization: Bearer <jwt>`
+
+**Body:** None
+
+### Success response (200 OK)
 
 ```json
 {
-  "submissionId": 456,
-  "voteType": "UPVOTE"
+    "message": "User vote status retrieved",
+    "userVoteStatus": "UPVOTE"
 }
 ```
 
-### Validation
+`userVoteStatus` is `UPVOTE`, `DOWNVOTE`, or `NONE`.
 
-| Field        | Rule              |
-| ------------ |-------------------|
-| submissionId | required          |
-| voteType     | UPVOTE / DOWNVOTE |
+### Error responses
 
-### Response
-
-```json
-{
-  "message": "Vote recorded successfully",
-  "voteId": 789,
-  "submissionId": 456,
-  "voteType": "upvote"
-}
+| Status | Description |
+|--------|-------------|
+| 401 Unauthorized | Missing or invalid token |
 
 ---
 
-## Report Submission
+## POST /report
 
-**POST /report**
+Records a report against a salary submission. Proxied to the report service. The BFF injects `userId` from the validated token.
 
-### Request
+**Auth required:** Yes
+
+**Request body:**
 
 ```json
 {
-  "submissionId": 456,
-  "reason": "fake",
-  "comment": "This salary seems unrealistic"
+    "submissionId": 5,
+    "reason": "Salary seems unrealistic"
 }
 ```
 
-### Response
+| Field | Type | Description |
+|-------|------|-------------|
+| `submissionId` | long | required |
+| `reason` | string | optional |
+
+### Success response (200 OK)
 
 ```json
 {
-  "message": "Report recorded successfully",
-  "reportId": 321,
-  "submissionId": 456
+    "message": "Report recorded successfully"
 }
 ```
 
-# Search Service
+### Error responses
 
-Base URL: `http://localhost:8084`
+| Status | Description |
+|--------|-------------|
+| 401 Unauthorized | Missing or invalid token |
+| 400 Bad Request | Validation failure or duplicate report |
 
-## Search Salaries
+---
 
-**GET /api/search**
+## GET /search
 
-### Query Parameters
+Searches salary submissions with optional filters and pagination. The BFF converts the query parameters to a POST body and forwards to the search service.
 
-| Parameter       | Description                |
-| --------------- | -------------------------- |
-| country         | filter by country          |
-| company         | filter by company          |
-| role            | filter by role             |
-| experienceLevel | filter by experience level |
+**Auth required:** No
 
-### Example
+**Query parameters:**
 
-`GET /api/search?country=Sri Lanka&role=Software Engineer`
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `countries` | string (repeatable) | Filter by one or more countries |
+| `companies` | string (repeatable) | Filter by one or more companies |
+| `roles` | string (repeatable) | Filter by one or more roles |
+| `experienceLevels` | string (repeatable) | `INTERN`, `JUNIOR`, `MID`, `SENIOR`, `LEAD` |
+| `salaryMin` | number | Minimum salary (inclusive) |
+| `salaryMax` | number | Maximum salary (inclusive) |
+| `page` | integer | Page index, 0-based (default `0`) |
+| `pageSize` | integer | Results per page, max 100 (default `20`) |
 
-### Response
+### Success response (200 OK)
 
 ```json
 {
-  "results": [
-    {
-      "id": 456,
-      "company": "Tech Corp",
-      "role": "Software Engineer",
-      "salary": 120000,
-      "currency": "LKR",
-      "experienceLevel": "Mid",
-      "location": "Colombo",
-      "yearsOfExperience": 3,
-      "status": "APPROVED",
-      "anonymize": false,
-      "upvotes": 3,
-      "downvotes": 2       
+    "salaries": [
+        {
+            "id": 5,
+            "company": "Tech Corp",
+            "country": "Sri Lanka",
+            "role": "Software Engineer",
+            "salary": 120000,
+            "currency": "LKR",
+            "experienceLevel": "MID",
+            "yearsOfExperience": 3,
+            "isAnonymized": false,
+            "submittedAt": "2024-01-15T10:30:00",
+            "upvoteCount": 3,
+            "downvoteCount": 1
+        }
+    ],
+    "totalCount": 42,
+    "totalPages": 3,
+    "currentPage": 0,
+    "pageSize": 20
+}
+```
+
+When `anonymize` was `true` on submission, `company` is returned as `"Anonymous"`.
+
+---
+
+## GET /stats
+
+Returns aggregate salary statistics with optional filters. Proxied to the stats service.
+
+**Auth required:** No
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `location` | string | Filter by country/location |
+| `role` | string | Filter by role |
+| `experienceLevel` | string | `INTERN`, `JUNIOR`, `MID`, `SENIOR`, `LEAD` |
+
+### Success response (200 OK)
+
+```json
+{
+    "averageSalary": 145000.0,
+    "medianSalary": 135000.0,
+    "minSalary": 80000.0,
+    "maxSalary": 250000.0,
+    "count": 47,
+    "percentiles": {
+        "10": 90000.0,
+        "25": 110000.0,
+        "50": 135000.0,
+        "75": 175000.0,
+        "90": 210000.0
+    },
+    "experienceBreakdown": {
+        "JUNIOR": { "average": 95000.0, "count": 12 },
+        "MID": { "average": 140000.0, "count": 20 },
+        "SENIOR": { "average": 200000.0, "count": 15 }
     }
-  ],
-  "count": 1
 }
 ```
 
-Rules:
+Only **`APPROVED`** submissions are included in calculations. All salaries are normalised to **USD** before aggregation.
 
-* Only return **APPROVED submissions**
-* If anonymize=true → replace company with **Confidential**
-
----
-
-# Stats Service
-
-Base URL: `http://localhost:8085`
-
-## Get Statistics
-
-**GET /stats**
-
-### Query Parameters
-
-| Parameter       | Description                |
-| --------------- | -------------------------- |
-| location        | filter by location         |
-| role            | filter by role             |
-| experienceLevel | filter by experience level |
-
-### Response
-
-```json
-{
-  "averageSalary": 145000,
-  "medianSalary": 135000,
-  "percentile25": 110000,
-  "percentile75": 175000,
-  "minSalary": 80000,
-  "maxSalary": 250000,
-  "totalCount": 47,
-  "currency": "LKR"
-}
-```
-
-### Calculations
-
-| Metric       | SQL                   |
-| ------------ | --------------------- |
-| Average      | AVG(salary)           |
-| Median       | PERCENTILE_CONT(0.5)  |
-| Percentile25 | PERCENTILE_CONT(0.25) |
-| Percentile75 | PERCENTILE_CONT(0.75) |
-| Min          | MIN(salary)           |
-| Max          | MAX(salary)           |
-| Count        | COUNT(*)              |
-
-Rules:
-
-* Only use submissions with status **APPROVED**
-* Apply filters dynamically
-
-
+When no matching submissions exist, `count` is `0`.

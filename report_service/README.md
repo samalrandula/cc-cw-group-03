@@ -6,7 +6,7 @@ For **local or internal testing**, you may call the report service directly with
 
 Reports are persisted in the **`reports`** table. Submitting a report **does not** change the salary submission’s **`status`** (no `FLAGGED` state; community moderation is separate from the `PENDING` / `APPROVED` / `REJECTED` / `ADMIN_REJECTED` lifecycle). The **salary submission service** remains the source of truth for **`status`**.
 
-**Default local base URL:** `http://localhost:8086` (see `application.properties`).
+**Default local base URL:** `http://localhost:8087` (see `application.properties`).
 
 ---
 
