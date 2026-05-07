@@ -48,7 +48,7 @@ stages:
                 -w /app \
                 gradle:8.7-jdk21 \
                 ./gradlew test
-            displayName: 'Run BFF Unit Tests'
+            displayName: 'Running BFF service Unit Tests'
 
           - task: PublishTestResults@2
             displayName: 'Publish BFF Test Results'
