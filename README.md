@@ -4,7 +4,7 @@ Zalary is a community-driven salary transparency platform. Users can anonymously
 
 ---
 
-## Architecture
+## Architecture Overview
 
 The platform is built as a set of loosely coupled microservices behind a single BFF (Backend for Frontend). All client traffic enters through the BFF; internal services are not exposed directly.
 
